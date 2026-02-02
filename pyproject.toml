@@ -1,0 +1,10 @@
+[project]
+name = "ml4rs-2026-arctic-downscale"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=3.0.0",
+    "requests>=2.32.5",
+]
