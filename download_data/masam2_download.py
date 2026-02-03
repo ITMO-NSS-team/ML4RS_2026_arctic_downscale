@@ -4,20 +4,20 @@ import os
 
 
 def masam2_download(folder):
-    dates_range = pd.date_range('20120101', '20261231')
+    dates_range = pd.date_range('20141101', '20251231')
     for date in dates_range:
         month = date.strftime('%m')
         year = date.strftime('%Y')
 
-        url = f"https://noaadata.apps.nsidc.org/NOAA/G10005/Data/{year}/masam2.{year}{month}.nc.gz"
-        filename = f"masam2.{year}{month}.nc.gz"
+        url = f"https://noaadata.apps.nsidc.org/NOAA/G10005/Data/{year}/masam2.{year}{month}.nc"
+        filename = f"masam2.{year}{month}.nc"
         filepath = os.path.join(folder, str(year), filename)
 
         # Skip if file exists
         if os.path.exists(filepath):
             print(f"Skipping existing file: {filename}")
             continue
-
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         try:
             print(f"Downloading {filename}...")
             response = requests.get(url)
