@@ -200,7 +200,7 @@ def train_unet(model=None, train_loader=None, val_loader=None, test_loader=None,
                 'val_loss': avg_epoch_val_loss,
                 'train_rmse': train_rmse_value,
                 'val_rmse': val_rmse_value,
-            }, 'unet_best_model.pth')
+            }, '../models/unet_best_model.pth')
 
             print(f"Сохранена лучшая модель (val loss: {best_val_loss:.6f})")
         else:
@@ -261,8 +261,8 @@ if __name__ == "__main__":
         patience=10
     )
 
-    checkpoint = torch.load('unet_best_model.pth', map_location=DEVICE)
-    model_state_dict = checkpoint['model_state_dict']
+    checkpoint = torch.load('../models/unet_best_model.pth', map_location=DEVICE)
+    model_state_dict = checkpoint['../models/model_state_dict']
     model.load_state_dict(model_state_dict)
-    torch.save(results['model'].state_dict(), 'unet_final_model.pth')
-    print("Финальная модель сохранена как 'unet_final_model.pth'")
+    torch.save(results['model'].state_dict(), '../models/unet_final_model.pth')
+    print("Финальная модель сохранена как '../models/unet_final_model.pth'")

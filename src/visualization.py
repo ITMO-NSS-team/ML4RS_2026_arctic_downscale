@@ -63,9 +63,9 @@ def plot_metrics(train_metrics, test_metrics, title="График потерь",
     plt.show()
 
 
-def visualize_super_resolution_results(lr_images, hr_images, pred_images, epoch=0, model_name="Model", save_path=None):
+def visualize_results(lr_images, hr_images, pred_images, epoch='None', model_name="Model", save_path=None):
     """
-    Визуализация результатов суперразрешения: LR, Prediction, HR
+    Визуализация результатов: LR, Prediction, HR
     """
     n_samples = min(4, len(lr_images))
 
@@ -75,25 +75,22 @@ def visualize_super_resolution_results(lr_images, hr_images, pred_images, epoch=
         axes = axes.reshape(1, -1)
 
     for i in range(n_samples):
-        # Низкое разрешение (LR)
         lr = lr_images[i].squeeze().numpy()
         axes[i, 0].imshow(lr, cmap='Blues', vmin=0, vmax=1)
         axes[i, 0].set_title(f"LR Input (Frame {i + 1})")
         axes[i, 0].axis('off')
 
-        # Предсказание модели
         pred = pred_images[i].squeeze().numpy()
         axes[i, 1].imshow(pred, cmap='Blues', vmin=0, vmax=1)
         axes[i, 1].set_title(f"Prediction (Frame {i + 1})")
         axes[i, 1].axis('off')
 
-        # Высокое разрешение (HR - Ground Truth)
         hr = hr_images[i].squeeze().numpy()
         axes[i, 2].imshow(hr, cmap='Blues', vmin=0, vmax=1)
         axes[i, 2].set_title(f"Ground Truth HR (Frame {i + 1})")
         axes[i, 2].axis('off')
 
-    plt.suptitle(f"{model_name} - Super Resolution Results (Epoch {epoch})", fontsize=16)
+    plt.suptitle(f"{model_name} - Results (Epoch {epoch})", fontsize=16)
     plt.tight_layout()
 
     if save_path is None:

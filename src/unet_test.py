@@ -7,19 +7,19 @@ import random
 
 from dataset import create_dataloaders
 from unet import UNet
-from config import DEVICE, OSISAF_DIR, MASAM2_DIR
+from config import DEVICE, OSISAF_DIR, MASAM2_DIR, MODEL_PATH
 from visualization import visualize_results
 
 
 def load_model():
     """Загрузка обученной модели"""
     model = UNet().to(DEVICE)
-    if os.path.exists('../models/unet_final_model.pth'):
-        checkpoint = torch.load('../models/unet_final_model.pth', map_location=DEVICE)
+    if os.path.exists(MODEL_PATH):
+        checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
         model.load_state_dict(checkpoint)
-        print(f"модель загружена из {'../models/unet_final_model.pth'}")
+        print(f"модель загружена из {MODEL_PATH}")
     else:
-        print(f"Внимание: файл {'../models/unet_final_model.pth'} не найден!")
+        print(f"Внимание: файл {MODEL_PATH} не найден!")
         model = None
 
     return model
