@@ -1,5 +1,7 @@
 # Deep Learning for Ice Concentration Fusion: Case Study of OSISAF Downscaler
 
+The trained model (unet.pth) is located in the root directory.
+
 ## Installation
 
 1.  Clone the repository:
