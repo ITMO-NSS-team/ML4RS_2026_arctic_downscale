@@ -1,13 +1,14 @@
+import os
+
 import pandas as pd
 import requests
-import os
 
 
 def masam2_download(folder):
-    dates_range = pd.date_range('20141101', '20251231')
+    dates_range = pd.date_range("20141101", "20251231")
     for date in dates_range:
-        month = date.strftime('%m')
-        year = date.strftime('%Y')
+        month = date.strftime("%m")
+        year = date.strftime("%Y")
 
         url = f"https://noaadata.apps.nsidc.org/NOAA/G10005/Data/{year}/masam2.{year}{month}.nc"
         filename = f"masam2.{year}{month}.nc"
@@ -23,7 +24,7 @@ def masam2_download(folder):
             response = requests.get(url)
             response.raise_for_status()
 
-            with open(filepath, 'wb') as f:
+            with open(filepath, "wb") as f:
                 f.write(response.content)
 
             print(f"Downloaded {filename}")
@@ -33,5 +34,4 @@ def masam2_download(folder):
 
 
 if __name__ == "__main__":
-    masam2_download('D:/MASAM2')
-
+    masam2_download("D:/MASAM2")

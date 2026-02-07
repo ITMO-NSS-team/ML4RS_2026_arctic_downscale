@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class UNet(nn.Module):
     def __init__(self, in_channels=1, out_channels=1):
         super(UNet, self).__init__()
@@ -30,7 +31,7 @@ class UNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 16, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(16, out_channels, kernel_size=1)
+            nn.Conv2d(16, out_channels, kernel_size=1),
         )
 
     def conv_block(self, in_channels, out_channels):
@@ -40,7 +41,7 @@ class UNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
     def forward(self, x):
@@ -64,6 +65,8 @@ class UNet(nn.Module):
         dec1 = self.dec1(torch.cat([up1, enc1], dim=1))
 
         out = self.final(dec1)
-        out = F.interpolate(out, size=(2100, 2550), mode='bilinear', align_corners=False)
+        out = F.interpolate(
+            out, size=(2100, 2550), mode="bilinear", align_corners=False
+        )
 
         return out
