@@ -1,4 +1,4 @@
-# Deep Learning for Ice Concentration Fusion: Case Study of OSISAF Downscaler
+# Deep Learning for Super-resolution of Sea Ice Concentration: Case Study of OSISAF Downscaler
 
 The trained model (unet.pth) is located in the root directory.
 
