@@ -1,0 +1,17 @@
+[project]
+name = "ml4rs-2026-arctic-downscale"
+version = "0.1.0"
+description = "Deep Learning for Ice Concentration Fusion: Case Study of OSISAF Downscaler"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.4.2",
+    "torch",
+    "torchmetrics",
+    "matplotlib",
+    "pandas",
+    "requests",
+    "tqdm",
+    "xarray",
+    "scipy"
+]
