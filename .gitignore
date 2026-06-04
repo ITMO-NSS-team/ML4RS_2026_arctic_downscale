@@ -223,6 +223,7 @@ example_analysis/
 ice_concentration*_pairs*/
 convergence.png
 unet*_results_epoch_*.png
+models/unet_large_final.pth
 
 
 # notebooks
