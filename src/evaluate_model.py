@@ -1,10 +1,15 @@
 import argparse
-import time
+import importlib
+from pathlib import Path
 
 import numpy as np
 
 
-INTERPOLATION_METHODS = ("bilinear", "bicubic", "nearest")
+MODEL_MODULES = {
+    "unet_light": "unet_light",
+    "attention_unet": "attention_unet",
+    "unet_large": "unet_large",
+}
 
 
 def parse_date_range(value):
@@ -14,14 +19,20 @@ def parse_date_range(value):
     return dates
 
 
-def parse_methods(value):
-    methods = tuple(method.strip().lower() for method in value.split(","))
-    unknown_methods = sorted(set(methods) - set(INTERPOLATION_METHODS))
-    if unknown_methods:
-        raise argparse.ArgumentTypeError(
-            f"Unknown interpolation methods: {', '.join(unknown_methods)}"
-        )
-    return methods
+def load_model(model_name, weights_path):
+    import torch
+
+    from config import DEVICE
+
+    module = importlib.import_module(MODEL_MODULES[model_name])
+    model = module.UNet(in_channels=1, out_channels=1).to(DEVICE)
+
+    checkpoint = torch.load(weights_path, map_location=DEVICE)
+    state_dict = checkpoint.get("model_state_dict", checkpoint)
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    return model
 
 
 def balanced_accuracy(predictions, targets, threshold):
@@ -54,34 +65,9 @@ def ice_edge_error(predictions, targets, threshold):
     return (pred_binary != target_binary).sum().float() / 1e5
 
 
-def interpolate_images(lr_images, target_size, method):
-    import torch.nn.functional as F
-
-    if method == "nearest":
-        return F.interpolate(lr_images, size=target_size, mode=method)
-
-    return F.interpolate(
-        lr_images,
-        size=target_size,
-        mode=method,
-        align_corners=False,
-    )
-
-
-def summarize_metric_values(values):
-    return {
-        metric: {
-            "mean": float(np.nanmean(metric_values)),
-            "std": float(np.nanstd(metric_values, ddof=1))
-            if len(metric_values) > 1
-            else 0.0,
-        }
-        for metric, metric_values in values.items()
-    }
-
-
-def evaluate_interpolation_split(method, dataloader, split_name, threshold):
+def evaluate_split(model, dataloader, split_name, threshold):
     import torch
+    import torch.nn.functional as F
     import torchmetrics
     from tqdm import tqdm
 
@@ -102,14 +88,21 @@ def evaluate_interpolation_split(method, dataloader, split_name, threshold):
     )
 
     with torch.no_grad():
-        pbar = tqdm(dataloader, desc=f"{method} on {split_name}")
+        pbar = tqdm(dataloader, desc=f"Evaluating {split_name}")
         for batch in pbar:
             lr_images = batch["lr"].to(DEVICE)
             hr_images = batch["hr"].to(DEVICE)
-            upsampled = interpolate_images(lr_images, hr_images.shape[-2:], method)
-            upsampled = upsampled.clamp(0.0, 1.0)
 
-            for prediction, target in zip(upsampled, hr_images):
+            predictions = model(lr_images).clamp(0.0, 1.0)
+            if predictions.shape[-2:] != hr_images.shape[-2:]:
+                predictions = F.interpolate(
+                    predictions,
+                    size=hr_images.shape[-2:],
+                    mode="bilinear",
+                    align_corners=False,
+                )
+
+            for prediction, target in zip(predictions, hr_images):
                 prediction = prediction.unsqueeze(0)
                 target = target.unsqueeze(0)
 
@@ -130,7 +123,15 @@ def evaluate_interpolation_split(method, dataloader, split_name, threshold):
                 }
             )
 
-    return summarize_metric_values(values)
+    return {
+        metric: {
+            "mean": float(np.nanmean(metric_values)),
+            "std": float(np.nanstd(metric_values, ddof=1))
+            if len(metric_values) > 1
+            else 0.0,
+        }
+        for metric, metric_values in values.items()
+    }
 
 
 def format_mean_std(metric_values, precision=3):
@@ -140,9 +141,9 @@ def format_mean_std(metric_values, precision=3):
     )
 
 
-def print_results_table(results):
+def print_results_table(model_label, results):
     print("\n" + "=" * 96)
-    print("Performance comparison for interpolation baselines")
+    print(f"Performance comparison for {model_label}")
     print("=" * 96)
     print(
         f"{'Method':<16}{'Split':<8}{'BACC':<18}{'IIEE (x10^5)':<18}"
@@ -150,42 +151,37 @@ def print_results_table(results):
     )
     print("-" * 96)
 
-    for method, method_results in results.items():
-        for idx, split_name in enumerate(("Train", "Val", "Test")):
-            method_label = method if idx == 0 else ""
-            split_results = method_results[split_name.lower()]
-            print(
-                f"{method_label:<16}{split_name:<8}"
-                f"{format_mean_std(split_results['BACC']):<18}"
-                f"{format_mean_std(split_results['IIEE']):<18}"
-                f"{format_mean_std(split_results['MAE']):<18}"
-                f"{format_mean_std(split_results['PSNR'], precision=2):<18}"
-                f"{format_mean_std(split_results['SSIM']):<18}"
-            )
-        print("-" * 96)
+    for idx, split_name in enumerate(("Train", "Val", "Test")):
+        method = model_label if idx == 0 else ""
+        split_results = results[split_name.lower()]
+        print(
+            f"{method:<16}{split_name:<8}"
+            f"{format_mean_std(split_results['BACC']):<18}"
+            f"{format_mean_std(split_results['IIEE']):<18}"
+            f"{format_mean_std(split_results['MAE']):<18}"
+            f"{format_mean_std(split_results['PSNR'], precision=2):<18}"
+            f"{format_mean_std(split_results['SSIM']):<18}"
+        )
 
 
-def evaluate_interpolation_methods(
-    osisaf_dir,
-    masam2_dir,
+def evaluate_model(
+    model_name,
+    weights_path,
     train_date_range,
     val_date_range,
     test_date_range,
     batch_size=8,
     num_workers=2,
     threshold=0.15,
-    methods=INTERPOLATION_METHODS,
     with_missed=False,
 ):
+    from config import MASAM2_DIR, OSISAF_DIR
     from dataset import create_dataloaders
 
-    print("=" * 70)
-    print("EVALUATION OF INTERPOLATION METHODS FOR UPSCALING")
-    print("=" * 70)
-
+    model = load_model(model_name, weights_path)
     train_loader, val_loader, test_loader, _ = create_dataloaders(
-        osisaf_dir=osisaf_dir,
-        masam2_dir=masam2_dir,
+        osisaf_dir=OSISAF_DIR,
+        masam2_dir=MASAM2_DIR,
         train_date_range=train_date_range,
         val_date_range=val_date_range,
         test_date_range=test_date_range,
@@ -194,34 +190,31 @@ def evaluate_interpolation_methods(
         with_missed=with_missed,
     )
 
-    dataloaders = {
-        "train": train_loader,
-        "val": val_loader,
-        "test": test_loader,
+    results = {
+        "train": evaluate_split(model, train_loader, "train", threshold),
+        "val": evaluate_split(model, val_loader, "validation", threshold),
+        "test": evaluate_split(model, test_loader, "test", threshold),
     }
 
-    results = {}
-    for method in methods:
-        print(f"\nEvaluating method: {method.upper()}")
-        results[method] = {
-            split_name: evaluate_interpolation_split(
-                method=method,
-                dataloader=dataloader,
-                split_name=split_name,
-                threshold=threshold,
-            )
-            for split_name, dataloader in dataloaders.items()
-        }
-
-    print_results_table(results)
+    print_results_table(model_name, results)
     return results
 
 
 def main():
-    from config import MASAM2_DIR, OSISAF_DIR
-
     parser = argparse.ArgumentParser(
-        description="Evaluate interpolation baselines on train/val/test date splits."
+        description="Evaluate a trained U-Net model on train/val/test date splits."
+    )
+    parser.add_argument(
+        "--model",
+        choices=tuple(MODEL_MODULES.keys()),
+        default="unet_light",
+        help="Model architecture used for the checkpoint.",
+    )
+    parser.add_argument(
+        "--weights",
+        type=Path,
+        required=True,
+        help="Path to .pth weights or training checkpoint.",
     )
     parser.add_argument(
         "--train-range",
@@ -250,12 +243,6 @@ def main():
         help="Ice/no-ice threshold for BACC and IIEE.",
     )
     parser.add_argument(
-        "--methods",
-        type=parse_methods,
-        default=INTERPOLATION_METHODS,
-        help="Comma-separated methods: bilinear,bicubic,nearest.",
-    )
-    parser.add_argument(
         "--with-missed",
         action="store_true",
         help="Include MASAM2 dates listed in masam2_missed.txt.",
@@ -263,24 +250,18 @@ def main():
 
     args = parser.parse_args()
 
-    start_time = time.time()
-    results = evaluate_interpolation_methods(
-        osisaf_dir=OSISAF_DIR,
-        masam2_dir=MASAM2_DIR,
+    evaluate_model(
+        model_name=args.model,
+        weights_path=args.weights,
         train_date_range=args.train_range,
         val_date_range=args.val_range,
         test_date_range=args.test_range,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         threshold=args.threshold,
-        methods=args.methods,
         with_missed=args.with_missed,
     )
 
-    elapsed_time = time.time() - start_time
-    print(f"\nTotal evaluation time: {elapsed_time:.1f} seconds")
-    return results
-
 
 if __name__ == "__main__":
-    metrics = main()
+    main()
