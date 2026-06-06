@@ -81,22 +81,35 @@ def plot_metrics(
 
 
 def visualize_results(
-    lr_images, hr_images, pred_images, epoch="None", model_name="Model", save_path=None
+    lr_images,
+    hr_images,
+    pred_images,
+    epoch="None",
+    model_name="Model",
+    save_path=None,
+    dates=None,
 ):
     """
-    Results visualization: LR, Prediction, HR
+    Results visualization: LR, Prediction, HR, absolute error.
     """
     n_samples = min(4, len(lr_images))
 
-    fig, axes = plt.subplots(n_samples, 3, figsize=(15, 4 * n_samples))
+    fig, axes = plt.subplots(n_samples, 4, figsize=(20, 4 * n_samples))
 
     if n_samples == 1:
         axes = axes.reshape(1, -1)
 
     for i in range(n_samples):
+        date_title = ""
+        if dates is not None and i < len(dates):
+            date = str(dates[i])
+            if len(date) == 8 and date.isdigit():
+                date = f"{date[:4]}-{date[4:6]}-{date[6:]}"
+            date_title = f"\nDate: {date}"
+
         lr = lr_images[i].squeeze().numpy()
         axes[i, 0].imshow(lr, cmap="Blues", vmin=0, vmax=1)
-        axes[i, 0].set_title(f"LR Input (Frame {i + 1})")
+        axes[i, 0].set_title(f"LR Input (Frame {i + 1}){date_title}")
         axes[i, 0].axis("off")
 
         pred = pred_images[i].squeeze().numpy()
@@ -108,6 +121,12 @@ def visualize_results(
         axes[i, 2].imshow(hr, cmap="Blues", vmin=0, vmax=1)
         axes[i, 2].set_title(f"Ground Truth HR (Frame {i + 1})")
         axes[i, 2].axis("off")
+
+        absolute_error = np.abs(pred - hr)
+        im = axes[i, 3].imshow(absolute_error, cmap="Reds", vmin=0, vmax=1)
+        axes[i, 3].set_title(f"Absolute Error (Frame {i + 1})")
+        axes[i, 3].axis("off")
+        fig.colorbar(im, ax=axes[i, 3], fraction=0.046, pad=0.04)
 
     plt.suptitle(f"{model_name} - Results (Epoch {epoch})", fontsize=16)
     plt.tight_layout()

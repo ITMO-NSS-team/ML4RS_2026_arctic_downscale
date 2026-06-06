@@ -185,6 +185,7 @@ def train_attention_unet(
             test_batch = next(iter(test_loader))
             lr_test = test_batch["lr"][:4].to(DEVICE)
             hr_test = test_batch["hr"][:4].to(DEVICE)
+            dates_test = test_batch["date"][:4]
 
             with torch.no_grad():
                 pred_test = model(lr_test)
@@ -196,6 +197,7 @@ def train_attention_unet(
                 epoch=epoch + 1,
                 model_name="Attention U-Net Super Resolution",
                 save_path=f"attention_unet_results_epoch_{epoch + 1}.png",
+                dates=dates_test,
             )
 
         if (epoch + 1) % plot_every == 0:

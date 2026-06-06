@@ -185,6 +185,7 @@ def train_unet_light(
             test_batch = next(iter(test_loader))
             lr_test = test_batch["lr"][:4].to(DEVICE)
             hr_test = test_batch["hr"][:4].to(DEVICE)
+            dates_test = test_batch["date"][:4]
 
             with torch.no_grad():
                 pred_test = model(lr_test)
@@ -195,6 +196,7 @@ def train_unet_light(
                 pred_images=pred_test.cpu(),
                 epoch=epoch + 1,
                 model_name="Lightweight U-Net Super Resolution",
+                dates=dates_test,
             )
 
         if (epoch + 1) % plot_every == 0:
