@@ -67,6 +67,18 @@ To generate comparison plots between Low Res, High Res, and Prediction:
 uv run python src/visualize_pairs.py
 ```
 
+## Predicting One Date
+
+To run a trained model for a selected date:
+
+```bash
+uv run python src/predict_by_date.py --model unet_light --date 20230101
+```
+
+Available models are `unet_light` and `attention_unet`. By default, weights are
+loaded from `models/unet_light_final.pth` or `models/attention_unet_final.pth`.
+Use `--weights` to pass a custom checkpoint.
+
 ## Benchmarking
 
 To evaluate classical interpolation baselines:

@@ -135,7 +135,8 @@ def visualize_results(
         save_path = f"unet_light_results_epoch_{epoch}.png"
 
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.show()
+    if "agg" not in plt.get_backend().lower():
+        plt.show()
     plt.close()
 
     return save_path

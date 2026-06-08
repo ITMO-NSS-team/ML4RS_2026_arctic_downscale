@@ -228,3 +228,6 @@ models/unet_large_final.pth
 
 # notebooks
 notebooks/
+
+# reports
+reports/
