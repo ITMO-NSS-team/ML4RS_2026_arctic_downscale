@@ -7,14 +7,14 @@ import torch.optim as optim
 import torchmetrics
 from tqdm import tqdm
 
-from config import DEVICE, MASAM2_DIR, OSISAF_DIR
+from config import DEVICE, MASAM2_DIR, OSISAF_DIR, OUTPUT_FIGURES_DIR, OUTPUT_MODELS_DIR
 from dataset import create_dataloaders
-from unet_light import UNet
+from models.unet_light import UNetLight
 from visualization import plot_metrics, visualize_results
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MODELS_DIR = PROJECT_ROOT / "models"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MODELS_DIR = OUTPUT_MODELS_DIR
 BEST_MODEL_PATH = MODELS_DIR / "unet_light_best.pth"
 FINAL_MODEL_PATH = MODELS_DIR / "unet_light_final.pth"
 
@@ -54,7 +54,7 @@ def train_unet_light(
     print("=" * 70)
 
     if model is None:
-        model = UNet(in_channels=1, out_channels=1).to(DEVICE)
+        model = UNetLight(in_channels=1, out_channels=1).to(DEVICE)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -213,6 +213,7 @@ def train_unet_light(
                 pred_images=pred_test.cpu(),
                 epoch=epoch + 1,
                 model_name="Lightweight U-Net Super Resolution",
+                save_path=OUTPUT_FIGURES_DIR / f"unet_light_results_epoch_{epoch + 1}.png",
                 dates=dates_test,
             )
 
@@ -224,6 +225,7 @@ def train_unet_light(
                 epoch_val_losses,
                 title=f"U-Net - Loss (epoch {epoch + 1})",
                 metric="Loss (MAE)",
+                save_path=OUTPUT_FIGURES_DIR / f"unet_light_loss_epoch_{epoch + 1}.png",
             )
 
             plot_metrics(
@@ -231,6 +233,7 @@ def train_unet_light(
                 val_rmse_history,
                 title=f"U-Net - RMSE (epoch {epoch + 1})",
                 metric="RMSE",
+                save_path=OUTPUT_FIGURES_DIR / f"unet_light_rmse_epoch_{epoch + 1}.png",
             )
 
             plot_metrics(
@@ -238,6 +241,7 @@ def train_unet_light(
                 val_psnr_history,
                 title=f"U-Net - PSNR (epoch {epoch + 1})",
                 metric="PSNR",
+                save_path=OUTPUT_FIGURES_DIR / f"unet_light_psnr_epoch_{epoch + 1}.png",
             )
 
             if len(train_ssim_history) > 0:
@@ -246,6 +250,7 @@ def train_unet_light(
                     val_ssim_history,
                     title=f"U-Net - SSIM (epoch {epoch + 1}, every 5 epoch)",
                     metric="SSIM",
+                    save_path=OUTPUT_FIGURES_DIR / f"unet_light_ssim_epoch_{epoch + 1}.png",
                 )
 
         print("-" * 50)
@@ -314,7 +319,7 @@ if __name__ == "__main__":
         with_missed=False,
     )
 
-    model = UNet(in_channels=1, out_channels=1).to(DEVICE)
+    model = UNetLight(in_channels=1, out_channels=1).to(DEVICE)
 
     results = train_unet_light(
         model=model,

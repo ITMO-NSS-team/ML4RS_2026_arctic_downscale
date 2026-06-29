@@ -3,11 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class UNet(nn.Module):
+class UNetLight(nn.Module):
     """Lightweight U-Net"""
 
     def __init__(self, in_channels=1, out_channels=1):
-        super(UNet, self).__init__()
+        super(UNetLight, self).__init__()
 
         self.enc1 = self.conv_block(in_channels, 16)
         self.enc2 = self.conv_block(16, 32)

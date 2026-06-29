@@ -9,19 +9,30 @@ import torch.nn.functional as F
 
 matplotlib.use("Agg")
 
-from config import DEVICE, MASAM2_DIR, OSISAF_DIR, PROJECT_ROOT
+from config import (
+    DEVICE,
+    MASAM2_DIR,
+    OSISAF_DIR,
+    OUTPUT_MODELS_DIR,
+    OUTPUT_PREDICTIONS_DIR,
+)
 from dataset import IceConcentrationDataset
-from visualization import visualize_results
+from visualization.visualization import visualize_results
 
 
 MODEL_MODULES = {
-    "unet_light": "unet_light",
-    "attention_unet": "attention_unet",
+    "unet_light": "models.unet_light",
+    "attention_unet": "models.attention_unet",
+}
+
+MODEL_CLASSES = {
+    "unet_light": "UNetLight",
+    "attention_unet": "AttentionUNet",
 }
 
 DEFAULT_WEIGHTS = {
-    "unet_light": PROJECT_ROOT / "models" / "unet_light_final.pth",
-    "attention_unet": PROJECT_ROOT / "models" / "attention_unet_final.pth",
+    "unet_light": OUTPUT_MODELS_DIR / "unet_light_final.pth",
+    "attention_unet": OUTPUT_MODELS_DIR / "attention_unet_final.pth",
 }
 
 
@@ -44,7 +55,8 @@ def load_model(model_name, weights_path):
         Model in evaluation mode.
     """
     module = importlib.import_module(MODEL_MODULES[model_name])
-    model = module.UNet(in_channels=1, out_channels=1).to(DEVICE)
+    model_class = getattr(module, MODEL_CLASSES[model_name])
+    model = model_class(in_channels=1, out_channels=1).to(DEVICE)
 
     checkpoint = torch.load(weights_path, map_location=DEVICE)
     state_dict = checkpoint.get("model_state_dict", checkpoint)
@@ -77,7 +89,7 @@ def predict_by_date(
     model_name,
     date,
     weights_path=None,
-    output_dir=PROJECT_ROOT / "predictions",
+    output_dir=OUTPUT_PREDICTIONS_DIR,
     osisaf_dir=OSISAF_DIR,
     masam2_dir=MASAM2_DIR,
 ):
@@ -170,12 +182,12 @@ def main():
         "--weights",
         type=Path,
         default=None,
-        help="Path to .pth weights. Defaults to models/<model>_final.pth.",
+        help="Path to .pth weights. Defaults to outputs/models/<model>_final.pth.",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "predictions",
+        default=OUTPUT_PREDICTIONS_DIR,
         help="Directory for saved .npy prediction and .png visualization.",
     )
     parser.add_argument(
