@@ -26,12 +26,23 @@ DEFAULT_WEIGHTS = {
 
 
 def validate_date(value):
+    """Validate a CLI date string."""
     if len(value) != 8 or not value.isdigit():
         raise argparse.ArgumentTypeError("Date must use YYYYMMDD format")
     return value
 
 
 def load_model(model_name, weights_path):
+    """
+    Load a prediction model and weights.
+
+    Args:
+        model_name: Model key from MODEL_MODULES.
+        weights_path: Path to weights or checkpoint.
+
+    Returns:
+        Model in evaluation mode.
+    """
     module = importlib.import_module(MODEL_MODULES[model_name])
     model = module.UNet(in_channels=1, out_channels=1).to(DEVICE)
 
@@ -44,6 +55,16 @@ def load_model(model_name, weights_path):
 
 
 def find_sample_by_date(dataset, date):
+    """
+    Find a dataset sample for a specific date.
+
+    Args:
+        dataset: IceConcentrationDataset instance.
+        date: Date in YYYYMMDD format.
+
+    Returns:
+        Sample dictionary for the requested date.
+    """
     for idx, (osisaf_path, _) in enumerate(dataset.pairs):
         sample_date = dataset._extract_date(Path(osisaf_path).name)
         if sample_date == date:
@@ -60,6 +81,20 @@ def predict_by_date(
     osisaf_dir=OSISAF_DIR,
     masam2_dir=MASAM2_DIR,
 ):
+    """
+    Run one-date prediction and save array and figure outputs.
+
+    Args:
+        model_name: Model key from MODEL_MODULES.
+        date: Prediction date in YYYYMMDD format.
+        weights_path: Optional path to weights or checkpoint.
+        output_dir: Directory for prediction outputs.
+        osisaf_dir: Directory with OSISAF .npy files.
+        masam2_dir: Directory with MASAM2 .npy files.
+
+    Returns:
+        Paths to the saved prediction array and figure.
+    """
     weights_path = Path(weights_path) if weights_path else DEFAULT_WEIGHTS[model_name]
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -115,6 +150,7 @@ def predict_by_date(
 
 
 def main():
+    """Parse CLI arguments and run one-date prediction"""
     parser = argparse.ArgumentParser(
         description="Run a trained U-Net model for a single date."
     )

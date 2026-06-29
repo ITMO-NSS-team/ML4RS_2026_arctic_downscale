@@ -4,6 +4,8 @@ import torch.nn.functional as F
 
 
 class UNet(nn.Module):
+    """Lightweight U-Net"""
+
     def __init__(self, in_channels=1, out_channels=1):
         super(UNet, self).__init__()
 
@@ -42,6 +44,7 @@ class UNet(nn.Module):
         )
 
     def conv_block(self, in_channels, out_channels):
+        """Create a two-layer convolution block"""
         return nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=7, padding=3),
             nn.BatchNorm2d(out_channels),

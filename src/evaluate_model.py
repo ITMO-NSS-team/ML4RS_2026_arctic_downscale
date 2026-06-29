@@ -13,6 +13,15 @@ MODEL_MODULES = {
 
 
 def parse_date_range(value):
+    """
+    Parse a comma-separated CLI date range.
+
+    Args:
+        value: Text in START,END format.
+
+    Returns:
+        Tuple with start and end date strings.
+    """
     dates = tuple(part.strip() for part in value.split(","))
     if len(dates) != 2:
         raise argparse.ArgumentTypeError("Date range must be START,END")
@@ -20,6 +29,16 @@ def parse_date_range(value):
 
 
 def load_model(model_name, weights_path):
+    """
+    Load a model architecture and its weights.
+
+    Args:
+        model_name: Model key from MODEL_MODULES.
+        weights_path: Path to a state dict or checkpoint.
+
+    Returns:
+        Model in evaluation mode.
+    """
     import torch
 
     from config import DEVICE
@@ -66,6 +85,18 @@ def ice_edge_error(predictions, targets, threshold):
 
 
 def evaluate_split(model, dataloader, split_name, threshold):
+    """
+    Evaluate one dataset split with all metrics.
+
+    Args:
+        model: Trained PyTorch model.
+        dataloader: DataLoader for the split.
+        split_name: Label for progress output.
+        threshold: Ice/no-ice threshold.
+
+    Returns:
+        Metric summary dictionary.
+    """
     import torch
     import torch.nn.functional as F
     import torchmetrics
@@ -135,6 +166,7 @@ def evaluate_split(model, dataloader, split_name, threshold):
 
 
 def format_mean_std(metric_values, precision=3):
+    """Format metric mean and standard deviation"""
     return (
         f"{metric_values['mean']:.{precision}f} +/- "
         f"{metric_values['std']:.{precision}f}"
@@ -142,6 +174,13 @@ def format_mean_std(metric_values, precision=3):
 
 
 def print_results_table(model_label, results):
+    """
+    Print evaluation metrics as a comparison table.
+
+    Args:
+        model_label: Label for the evaluated model.
+        results: Metrics grouped by split.
+    """
     print("\n" + "=" * 96)
     print(f"Performance comparison for {model_label}")
     print("=" * 96)
@@ -175,6 +214,23 @@ def evaluate_model(
     threshold=0.15,
     with_missed=False,
 ):
+    """
+    Evaluate a trained model on train, validation, and test splits.
+
+    Args:
+        model_name: Model key from MODEL_MODULES.
+        weights_path: Path to weights or checkpoint.
+        train_date_range: Training range as start and end dates.
+        val_date_range: Validation range as start and end dates.
+        test_date_range: Test range as start and end dates.
+        batch_size: Evaluation batch size.
+        num_workers: Number of DataLoader workers.
+        threshold: Ice/no-ice threshold.
+        with_missed: Whether to keep MASAM2 missed-date pairs.
+
+    Returns:
+        Metrics grouped by split.
+    """
     from config import MASAM2_DIR, OSISAF_DIR
     from dataset import create_dataloaders
 
@@ -201,6 +257,7 @@ def evaluate_model(
 
 
 def main():
+    """Parse CLI arguments and run model evaluation"""
     parser = argparse.ArgumentParser(
         description="Evaluate a trained U-Net model on train/val/test date splits."
     )

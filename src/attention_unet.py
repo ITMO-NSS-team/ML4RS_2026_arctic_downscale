@@ -4,6 +4,8 @@ import torch.nn.functional as F
 
 
 class AttentionGate(nn.Module):
+    """Attention gate for filtering encoder skip features"""
+
     def __init__(self, encoder_channels, decoder_channels, intermediate_channels):
         super(AttentionGate, self).__init__()
 
@@ -37,6 +39,8 @@ class AttentionGate(nn.Module):
 
 
 class UNet(nn.Module):
+    """Attention U-Net"""
+
     def __init__(self, in_channels=1, out_channels=1):
         super(UNet, self).__init__()
 
@@ -78,6 +82,7 @@ class UNet(nn.Module):
         )
 
     def conv_block(self, in_channels, out_channels):
+        """Create a two-layer convolution block"""
         return nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=7, padding=3),
             nn.BatchNorm2d(out_channels),

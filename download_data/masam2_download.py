@@ -5,6 +5,12 @@ import requests
 
 
 def masam2_download(folder):
+    """
+    Download monthly MASAM2 NetCDF files into a year-based folder tree.
+
+    Args:
+        folder: Root directory for downloaded files.
+    """
     dates_range = pd.date_range("20141101", "20251231")
     for date in dates_range:
         month = date.strftime("%m")
@@ -14,7 +20,6 @@ def masam2_download(folder):
         filename = f"masam2.{year}{month}.nc"
         filepath = os.path.join(folder, str(year), filename)
 
-        # Skip if file exists
         if os.path.exists(filepath):
             print(f"Skipping existing file: {filename}")
             continue

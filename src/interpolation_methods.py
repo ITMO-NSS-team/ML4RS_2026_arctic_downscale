@@ -8,6 +8,7 @@ INTERPOLATION_METHODS = ("bilinear", "bicubic", "nearest")
 
 
 def parse_date_range(value):
+    """Parse a comma-separated CLI date range"""
     dates = tuple(part.strip() for part in value.split(","))
     if len(dates) != 2:
         raise argparse.ArgumentTypeError("Date range must be START,END")
@@ -15,6 +16,7 @@ def parse_date_range(value):
 
 
 def parse_methods(value):
+    """Parse and validate interpolation methods from CLI text"""
     methods = tuple(method.strip().lower() for method in value.split(","))
     unknown_methods = sorted(set(methods) - set(INTERPOLATION_METHODS))
     if unknown_methods:
@@ -55,6 +57,17 @@ def ice_edge_error(predictions, targets, threshold):
 
 
 def interpolate_images(lr_images, target_size, method):
+    """
+    Upsample low-resolution images to a target size.
+
+    Args:
+        lr_images: Input image batch.
+        target_size: Target height and width.
+        method: Interpolation method.
+
+    Returns:
+        Upsampled image batch.
+    """
     import torch.nn.functional as F
 
     if method == "nearest":
@@ -69,6 +82,7 @@ def interpolate_images(lr_images, target_size, method):
 
 
 def summarize_metric_values(values):
+    """Summarize metric samples with mean and standard deviation"""
     return {
         metric: {
             "mean": float(np.nanmean(metric_values)),
@@ -81,6 +95,18 @@ def summarize_metric_values(values):
 
 
 def evaluate_interpolation_split(method, dataloader, split_name, threshold):
+    """
+    Evaluate one interpolation method on one data split.
+
+    Args:
+        method: Interpolation method name.
+        dataloader: DataLoader for the split.
+        split_name: Label for progress output.
+        threshold: Ice/no-ice threshold.
+
+    Returns:
+        Metric summary dictionary.
+    """
     import torch
     import torchmetrics
     from tqdm import tqdm
@@ -134,6 +160,7 @@ def evaluate_interpolation_split(method, dataloader, split_name, threshold):
 
 
 def format_mean_std(metric_values, precision=3):
+    """Format metric mean and standard deviation"""
     return (
         f"{metric_values['mean']:.{precision}f} +/- "
         f"{metric_values['std']:.{precision}f}"
@@ -141,6 +168,12 @@ def format_mean_std(metric_values, precision=3):
 
 
 def print_results_table(results):
+    """
+    Print interpolation metrics as a comparison table.
+
+    Args:
+        results: Metrics grouped by method and split.
+    """
     print("\n" + "=" * 96)
     print("Performance comparison for interpolation baselines")
     print("=" * 96)
@@ -177,6 +210,24 @@ def evaluate_interpolation_methods(
     methods=INTERPOLATION_METHODS,
     with_missed=False,
 ):
+    """
+    Evaluate interpolation baselines on train, validation, and test splits.
+
+    Args:
+        osisaf_dir: Directory with OSISAF .npy files.
+        masam2_dir: Directory with MASAM2 .npy files.
+        train_date_range: Training range as start and end dates.
+        val_date_range: Validation range as start and end dates.
+        test_date_range: Test range as start and end dates.
+        batch_size: Evaluation batch size.
+        num_workers: Number of DataLoader workers.
+        threshold: Ice/no-ice threshold.
+        methods: Interpolation methods to evaluate.
+        with_missed: Whether to keep MASAM2 missed-date pairs.
+
+    Returns:
+        Metrics grouped by method and split.
+    """
     from dataset import create_dataloaders
 
     print("=" * 70)
@@ -218,6 +269,7 @@ def evaluate_interpolation_methods(
 
 
 def main():
+    """Parse CLI arguments and run interpolation evaluation"""
     from config import MASAM2_DIR, OSISAF_DIR
 
     parser = argparse.ArgumentParser(

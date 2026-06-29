@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader, Dataset, Subset
 
 
 class IceConcentrationDataset(Dataset):
+    """Dataset of matched OSISAF inputs and MASAM2 targets."""
+
     def __init__(
         self,
         osisaf_dir: str,
@@ -20,14 +22,14 @@ class IceConcentrationDataset(Dataset):
         date_pattern: str = r"(\d{8})",
     ):
         """
-        Initializing the dataset
+        Initialize paired sea ice concentration samples.
 
         Args:
-            osisaf_dir: Path to directory with OSISAF (.npy)
-            masam2_dir: Path to directory with  MASAM2 (.npy)
-            transform: transformations for input data (low resolution)
-            target_transform: conversions for target (high resolution)
-            date_pattern: regular expression for extracting a date from a file name
+            osisaf_dir: Path to directory with OSISAF .npy files.
+            masam2_dir: Path to directory with MASAM2 .npy files.
+            transform: Optional transform for low-resolution data.
+            target_transform: Optional transform for high-resolution data.
+            date_pattern: Regex for extracting dates from filenames.
         """
         self.osisaf_dir = Path(osisaf_dir)
         self.masam2_dir = Path(masam2_dir)
@@ -48,6 +50,12 @@ class IceConcentrationDataset(Dataset):
         )
 
     def _find_matching_pairs(self) -> List[Tuple[str, str]]:
+        """
+        Match OSISAF and MASAM2 files by date.
+
+        Returns:
+            Sorted list of paired file paths.
+        """
         osisaf_files = {
             f: self._extract_date(f.name) for f in self.osisaf_dir.rglob("*.npy")
         }
@@ -76,10 +84,20 @@ class IceConcentrationDataset(Dataset):
         return pairs
 
     def _extract_date(self, filename: str) -> Optional[str]:
+        """
+        Extract an YYYYMMDD date from a filename.
+
+        Args:
+            filename: Filename to inspect.
+
+        Returns:
+            Date string, or None if no date is found.
+        """
         match = re.search(self.date_pattern, filename)
         return match.group(1) if match else None
 
     def _init_resolutions(self):
+        """Load sample arrays and store input and target shapes."""
         osisaf_sample = np.load(self.pairs[0][0])
         masam2_sample = np.load(self.pairs[0][1])
 
@@ -101,19 +119,21 @@ class IceConcentrationDataset(Dataset):
         return data.astype(np.float32)
 
     def __len__(self) -> int:
+        """
+        Returns:
+            Dataset length.
+        """
         return len(self.pairs)
 
     def __getitem__(self, idx: int) -> dict:
         """
-        Getting a dataset element
+        Load and preprocess one matched sample.
+
+        Args:
+            idx: Sample index.
 
         Returns:
-            dict with keys:
-                'lr': low resolution tensor [1, H_lr, W_lr]
-                'hr': high resolution tensor [1, H_hr, W_hr]
-                'date': string with data in format YYYYMMDD
-                'lr_path': path to OSISAF file
-                'hr_path': path to  MASAM2 file
+            Dictionary with tensors, date, and source paths.
         """
         osisaf_path, masam2_path = self.pairs[idx]
 
@@ -143,6 +163,12 @@ class IceConcentrationDataset(Dataset):
         }
 
     def get_statistics(self) -> dict:
+        """
+        Collect basic dataset statistics.
+
+        Returns:
+            Dictionary with pair count, shapes, scale factor, and date range.
+        """
         stats = {
             "total_pairs": len(self.pairs),
             "lr_resolution": self.lr_shape,
@@ -157,6 +183,16 @@ class IceConcentrationDataset(Dataset):
 
 
 def _validate_date_range(name: str, date_range: Tuple[str, str]) -> Tuple[str, str]:
+    """
+    Validate an inclusive YYYYMMDD date range.
+
+    Args:
+        name: Range label for error messages.
+        date_range: Start and end date strings.
+
+    Returns:
+        Validated start and end date strings.
+    """
     if len(date_range) != 2:
         raise ValueError(f"{name} date range must contain a start and an end date")
 
@@ -176,6 +212,15 @@ def _validate_date_range(name: str, date_range: Tuple[str, str]) -> Tuple[str, s
 
 
 def _load_missed_dates(missed_path: Path) -> set[str]:
+    """
+    Load MASAM2 dates that should be excluded.
+
+    Args:
+        missed_path: Path to the missed-dates text file.
+
+    Returns:
+        Set of date strings.
+    """
     if not missed_path.exists():
         raise FileNotFoundError(
             f"MASAM2 missed-dates file not found: {missed_path}"
@@ -213,6 +258,19 @@ def create_dataloaders(
 ):
     """
     Create data loaders from sequential, inclusive date ranges.
+
+    Args:
+        osisaf_dir: Directory with OSISAF .npy files.
+        masam2_dir: Directory with MASAM2 .npy files.
+        train_date_range: Training range as start and end dates.
+        val_date_range: Validation range as start and end dates.
+        test_date_range: Test range as start and end dates.
+        batch_size: Batch size for all loaders.
+        num_workers: Number of DataLoader workers.
+        with_missed: Whether to keep MASAM2 missed-date pairs.
+
+    Returns:
+        Train, validation, test loaders, and the full dataset.
 
     Ranges must use YYYYMMDD format and be ordered as train, validation, test.
     Set with_missed=False to exclude dates listed in masam2_missed.txt located

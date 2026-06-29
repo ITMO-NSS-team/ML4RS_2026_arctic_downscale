@@ -5,6 +5,12 @@ import matplotlib.pyplot as plt
 
 
 def visualize_example(file_path):
+    """
+    Save a quick image and histogram for one NumPy array.
+
+    Args:
+        file_path: Path to the .npy file.
+    """
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")
     else:
@@ -45,6 +51,16 @@ def visualize_example(file_path):
 def plot_metrics(
     train_metrics, test_metrics, title="Loss graph", window=5, metric="Loss (MSE)"
 ):
+    """
+    Plot train and validation metric histories.
+
+    Args:
+        train_metrics: Training metric values.
+        test_metrics: Validation metric values.
+        title: Figure title.
+        window: Reserved smoothing window argument.
+        metric: Metric label for axes and legend.
+    """
     plt.figure(figsize=(12, 6))
     epochs = range(1, len(train_metrics) + 1)
     if metric == "SSIM":
@@ -90,7 +106,19 @@ def visualize_results(
     dates=None,
 ):
     """
-    Results visualization: LR, Prediction, HR, absolute error.
+    Visualize low-resolution input, prediction, target, and error.
+
+    Args:
+        lr_images: Low-resolution input tensors.
+        hr_images: High-resolution target tensors.
+        pred_images: Predicted high-resolution tensors.
+        epoch: Epoch label for the title.
+        model_name: Model label for the title.
+        save_path: Optional output figure path.
+        dates: Optional date labels.
+
+    Returns:
+        Path to the saved figure.
     """
     n_samples = min(4, len(lr_images))
 

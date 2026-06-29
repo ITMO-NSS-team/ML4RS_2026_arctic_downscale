@@ -30,6 +30,23 @@ def train_attention_unet(
     plot_every=10,
     patience=10,
 ):
+    """
+    Train the attention U-Net and save the best checkpoint.
+
+    Args:
+        model: Optional model instance to train.
+        train_loader: DataLoader for training data.
+        val_loader: DataLoader for validation data.
+        test_loader: Optional DataLoader for visualization samples.
+        epochs: Maximum number of training epochs.
+        learning_rate: Adam optimizer learning rate.
+        visualize_every: Epoch interval for result visualizations.
+        plot_every: Epoch interval for metric plots.
+        patience: Early-stopping patience in epochs.
+
+    Returns:
+        Dictionary with the model and metric histories.
+    """
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=" * 70)

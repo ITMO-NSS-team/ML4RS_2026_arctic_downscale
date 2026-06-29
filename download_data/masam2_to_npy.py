@@ -11,16 +11,16 @@ warnings.filterwarnings("ignore")
 
 
 class MASAM2_to_NPY_Converter:
-    """
-    Convert from MASAM2 (.nc.gz) to .npy
-    """
+    """Convert MASAM2 NetCDF files to NumPy arrays."""
 
     def __init__(self, masam2_dir, output_dir=None, temp_dir=None):
         """
+        Initialize converter directories and conversion statistics.
+
         Args:
-            masam2_dir: Directory with MASAM2 files
-            output_dir: Directory for .npy files
-            temp_dir: Directory for temporal files
+            masam2_dir: Directory with MASAM2 files.
+            output_dir: Directory for .npy files.
+            temp_dir: Directory for temporary files.
         """
         self.masam2_dir = masam2_dir
         if output_dir is None:
@@ -44,7 +44,13 @@ class MASAM2_to_NPY_Converter:
 
     def read_masam2_file(self, file_path):
         """
-        return: xarray Dataset
+        Open a MASAM2 NetCDF file, including gzipped files.
+
+        Args:
+            file_path: Path to a .nc or .nc.gz file.
+
+        Returns:
+            xarray Dataset, or None if the file cannot be opened.
         """
         print(f"Reading file: {os.path.basename(file_path)}")
 
@@ -55,7 +61,7 @@ class MASAM2_to_NPY_Converter:
                 try:
                     ds = xr.open_dataset(file_path, engine=engine)
                     return ds
-                except:
+                except Exception:
                     continue
 
             temp_file = os.path.join(
@@ -73,7 +79,7 @@ class MASAM2_to_NPY_Converter:
                         ds = xr.open_dataset(temp_file, engine=engine)
                         self._temp_file_to_delete = temp_file
                         return ds
-                    except:
+                    except Exception:
                         continue
 
                 if os.path.exists(temp_file):
@@ -87,7 +93,11 @@ class MASAM2_to_NPY_Converter:
 
     def convert_masam2_file(self, file_path, output_subdir=None):
         """
-        Converts MASAM2 file to .npy file
+        Convert one MASAM2 file into daily .npy arrays.
+
+        Args:
+            file_path: Path to the MASAM2 source file.
+            output_subdir: Optional output subdirectory name.
         """
         print(f"\n{'=' * 60}")
         print(f"CONVERSION: {os.path.basename(file_path)}")
@@ -118,8 +128,8 @@ class MASAM2_to_NPY_Converter:
             else:
                 days = np.arange(1, ice_data.shape[0] + 1)
 
-            print(f"The data is uploaded:")
-            print(f"   Shape: {ice_data.shape} (days×height×width)")
+            print("The data is uploaded:")
+            print(f"   Shape: {ice_data.shape} (days x height x width)")
             print(f"   Data type: {ice_data.dtype}")
             print(f"   Days: {days}")
 
@@ -158,11 +168,12 @@ class MASAM2_to_NPY_Converter:
                 np.save(all_days_path, day_data_processed)
 
                 print(
-                    f"   Day {day_str}: {output_filename} ({day_data_processed.shape}, {day_data_processed.dtype})"
+                    f"   Day {day_str}: {output_filename} "
+                    f"({day_data_processed.shape}, {day_data_processed.dtype})"
                 )
                 self.stats["converted_frames"] += 1
 
-            print(f"\n The file has been successfully converted!")
+            print("\n The file has been successfully converted!")
             print(f"   Files are saved in: {output_subdir}")
             print(f"   Also in: {os.path.join(self.output_dir, 'all_days')}")
 
@@ -183,10 +194,19 @@ class MASAM2_to_NPY_Converter:
                 try:
                     os.remove(self._temp_file_to_delete)
                     delattr(self, "_temp_file_to_delete")
-                except:
+                except Exception:
                     pass
 
     def process_values(self, data):
+        """
+        Clean MASAM2 special values and interpolate missing pixels.
+
+        Args:
+            data: Raw MASAM2 concentration array.
+
+        Returns:
+            Cleaned concentration array.
+        """
         cleaned = data.copy().astype(np.int16)
         cleaned[(cleaned == 104) | (cleaned == 119) | (cleaned == 120)] = 0
         mask = cleaned == 110
@@ -199,10 +219,13 @@ class MASAM2_to_NPY_Converter:
 
     def batch_convert(self, file_pattern="masam2.*.nc"):
         """
-        Batch conversion of all MASAM2 files in the directory
+        Convert all MASAM2 files found in the input directory.
+
+        Args:
+            file_pattern: Expected MASAM2 filename pattern.
         """
         print(f"\n{'=' * 60}")
-        print(f"BATCH CONVERSION MASAM2 FILES")
+        print("BATCH CONVERSION MASAM2 FILES")
         print(f"Input directory: {self.masam2_dir}")
         print(f"Target directory: {self.output_dir}")
         print(f"Temporal directory: {self.temp_dir}")
@@ -219,11 +242,11 @@ class MASAM2_to_NPY_Converter:
         print(f" Files found MASAM2: {len(masam2_files)}")
 
         if len(masam2_files) == 0:
-            print("️  Files MASAM2 not found!")
-            print("   Expected format: masam2.YYYYMM.nc.gz или masam2.YYYYMM.nc")
+            print("Files MASAM2 not found!")
+            print("   Expected format: masam2.YYYYMM.nc.gz or masam2.YYYYMM.nc")
             return
 
-        print(f"\n STARTING THE CONVERSION...")
+        print("\n STARTING THE CONVERSION...")
 
         for i, file_path in enumerate(masam2_files):
             print(f"\n[{i + 1}/{len(masam2_files)}] ", end="")
@@ -231,6 +254,13 @@ class MASAM2_to_NPY_Converter:
 
 
 def quick_convert(masam2_file, output_dir=None):
+    """
+    Convert one MASAM2 file and print a sample output summary.
+
+    Args:
+        masam2_file: Path to the MASAM2 source file.
+        output_dir: Optional directory for generated .npy files.
+    """
     if output_dir is None:
         output_dir = os.path.join(os.path.dirname(masam2_file), "npy_output")
 
@@ -246,7 +276,7 @@ def quick_convert(masam2_file, output_dir=None):
                 npy_files.append(os.path.join(root, file))
 
     if npy_files:
-        print(f"\nTHE FIRST FILE CREATED:")
+        print("\nTHE FIRST FILE CREATED:")
         sample = np.load(npy_files[0])
         print(f"   Name: {os.path.basename(npy_files[0])}")
         print(f"   Shape: {sample.shape}")
@@ -257,15 +287,16 @@ def interpolate_missing_pixels(
     image: np.ndarray, mask: np.ndarray, method: str = "nearest", fill_value: int = 0
 ):
     """
-    Fill missing values from mask with interpolation
+    Fill masked pixels in a 2D image using interpolation.
 
     Args:
-        image: a 2D image
-        mask: a 2D boolean image, True indicates missing values
-        method: interpolation method, one of 'nearest', 'linear', 'cubic'.
-        fill_value: which value to use for filling up data outside the convex hull of known pixel values.
-        Default is 0, Has no effect for 'nearest'.
-        :return: the image with missing values interpolated
+        image: Input 2D image.
+        mask: Boolean mask where True marks missing pixels.
+        method: Interpolation method.
+        fill_value: Value outside the known-pixel hull.
+
+    Returns:
+        Image with interpolated missing pixels.
     """
     h, w = image.shape[:2]
     xx, yy = np.meshgrid(np.arange(w), np.arange(h))
@@ -287,7 +318,7 @@ def interpolate_missing_pixels(
 
 
 if __name__ == "__main__":
-    print("Converter MASAM2 → .npy format")
+    print("Converter MASAM2 to .npy format")
 
     for year in ["20" + str(i) for i in range(20, 21)]:
         for month in [str(j) for j in range(1, 13)]:
