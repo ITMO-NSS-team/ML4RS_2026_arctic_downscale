@@ -1,8 +1,14 @@
 import argparse
 import json
+import sys
 import time
+from pathlib import Path
 
 import numpy as np
+
+SRC_ROOT = Path(__file__).resolve().parents[1]
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 
 INTERPOLATION_METHODS = ("bilinear", "bicubic", "nearest")

@@ -1,5 +1,10 @@
+import sys
 import time
 from pathlib import Path
+
+SRC_ROOT = Path(__file__).resolve().parents[1]
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 import torch
 import torch.nn as nn
@@ -10,7 +15,7 @@ from tqdm import tqdm
 from config import DEVICE, MASAM2_DIR, OSISAF_DIR, OUTPUT_FIGURES_DIR, OUTPUT_MODELS_DIR
 from dataset import create_dataloaders
 from models.attention_unet import AttentionUNet
-from visualization import plot_metrics, visualize_results
+from visualization.visualization import plot_metrics, visualize_results
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

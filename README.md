@@ -1,7 +1,7 @@
 # Deep Learning for Super-resolution of Sea Ice Concentration: Case Study of OSISAF Downscaler
 
 The lightweight U-Net checkpoint used in the paper is located at
-`models/unet_light_checkpoint.pth`.
+`outputs/models/unet_light_checkpoint.pth`.
 
 ## Installation
 
@@ -33,14 +33,15 @@ data/
 ```
 
 ### Training the Lightweight Model
+
 To train the lightweight U-Net model from the paper:
 
 ```bash
-uv run python src/unet_light_train.py
+uv run python src/training/unet_light_train.py
 ```
 
 Training data is split by three sequential inclusive date ranges in
-`YYYYMMDD` format. Update these ranges in `src/unet_light_train.py` for your
+`YYYYMMDD` format. Update these ranges in `src/training/unet_light_train.py` for your
 dataset:
 
 ```python
@@ -61,22 +62,19 @@ include the restored MASAM2 matrices.
 
 ## Visualizing Results
 
-To generate comparison plots between Low Res, High Res, and Prediction:
-
-```bash
-uv run python src/visualize_pairs.py
-```
+Visualization helpers are located in `src/visualization/visualization.py`.
+Generated figures are saved under `outputs/figures/`.
 
 ## Predicting One Date
 
 To run a trained model for a selected date:
 
 ```bash
-uv run python src/predict_by_date.py --model unet_light --date 20230101
+uv run python src/inference/predict_by_date.py --model unet_light --date 20230101
 ```
 
 Available models are `unet_light` and `attention_unet`. By default, weights are
-loaded from `models/unet_light_final.pth` or `models/attention_unet_final.pth`.
+loaded from `outputs/models/unet_light_final.pth` or `outputs/models/attention_unet_final.pth`.
 Use `--weights` to pass a custom checkpoint.
 
 ## Benchmarking
@@ -84,5 +82,5 @@ Use `--weights` to pass a custom checkpoint.
 To evaluate classical interpolation baselines:
 
 ```bash
-uv run python src/interpolation_methods.py
+uv run python src/inference/interpolation_methods.py
 ```

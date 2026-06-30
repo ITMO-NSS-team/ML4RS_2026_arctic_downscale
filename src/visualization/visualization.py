@@ -7,49 +7,6 @@ import matplotlib.pyplot as plt
 from config import OUTPUT_FIGURES_DIR
 
 
-def visualize_example(file_path):
-    """
-    Save a quick image and histogram for one NumPy array.
-
-    Args:
-        file_path: Path to the .npy file.
-    """
-    if not os.path.exists(file_path):
-        print(f"File not found: {file_path}")
-    else:
-        try:
-            data = np.load(file_path)
-
-            print(f"Size: {data.shape}")
-            output_dir = OUTPUT_FIGURES_DIR / "example_analysis"
-            os.makedirs(output_dir, exist_ok=True)
-
-            plt.figure(figsize=(10, 10))
-            plt.imshow(data, cmap="Blues", origin="lower")
-            plt.colorbar(label="Ice concentration (%)")
-            plt.title("Data Example")
-            plt.savefig(f"{output_dir}/example_plot.png", dpi=150, bbox_inches="tight")
-            plt.close()
-            print(f"Graph saved: {output_dir}/example_plot.png")
-
-            plt.figure(figsize=(10, 5))
-            plt.hist(data.flatten(), bins=50, alpha=0.7)
-            plt.xlabel("Values")
-            plt.ylabel("Frequency")
-            plt.title("Distribution of values")
-            plt.savefig(
-                f"{output_dir}/example_histogram.png", dpi=150, bbox_inches="tight"
-            )
-            plt.close()
-            print(f"Histogram saved: {output_dir}/example_histogram.png")
-
-            print("\nEXTRA ANALYSIS:")
-            print(f"Data shape: {data.shape}")
-            print(f"Total number of pixels: {data.size}")
-
-        except Exception as e:
-            print(f"Download file exception: {e}")
-
 
 def plot_metrics(
     train_metrics,

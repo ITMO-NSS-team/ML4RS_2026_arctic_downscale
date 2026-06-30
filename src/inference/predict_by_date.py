@@ -1,5 +1,6 @@
 import argparse
 import importlib
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -7,14 +8,19 @@ import matplotlib
 import torch
 import torch.nn.functional as F
 
+SRC_ROOT = Path(__file__).resolve().parents[1]
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
 matplotlib.use("Agg")
 
 from config import (
+    ATTENTION_UNET_PREDICTIONS_DIR,
     DEVICE,
+    LIGHT_UNET_PREDICTIONS_DIR,
     MASAM2_DIR,
     OSISAF_DIR,
     OUTPUT_MODELS_DIR,
-    OUTPUT_PREDICTIONS_DIR,
 )
 from dataset import IceConcentrationDataset
 from visualization.visualization import visualize_results
@@ -33,6 +39,11 @@ MODEL_CLASSES = {
 DEFAULT_WEIGHTS = {
     "unet_light": OUTPUT_MODELS_DIR / "unet_light_final.pth",
     "attention_unet": OUTPUT_MODELS_DIR / "attention_unet_final.pth",
+}
+
+DEFAULT_OUTPUT_DIRS = {
+    "unet_light": LIGHT_UNET_PREDICTIONS_DIR,
+    "attention_unet": ATTENTION_UNET_PREDICTIONS_DIR,
 }
 
 
@@ -89,7 +100,7 @@ def predict_by_date(
     model_name,
     date,
     weights_path=None,
-    output_dir=OUTPUT_PREDICTIONS_DIR,
+    output_dir=None,
     osisaf_dir=OSISAF_DIR,
     masam2_dir=MASAM2_DIR,
 ):
@@ -100,7 +111,7 @@ def predict_by_date(
         model_name: Model key from MODEL_MODULES.
         date: Prediction date in YYYYMMDD format.
         weights_path: Optional path to weights or checkpoint.
-        output_dir: Directory for prediction outputs.
+        output_dir: Optional directory for prediction outputs.
         osisaf_dir: Directory with OSISAF .npy files.
         masam2_dir: Directory with MASAM2 .npy files.
 
@@ -108,7 +119,7 @@ def predict_by_date(
         Paths to the saved prediction array and figure.
     """
     weights_path = Path(weights_path) if weights_path else DEFAULT_WEIGHTS[model_name]
-    output_dir = Path(output_dir)
+    output_dir = Path(output_dir) if output_dir else DEFAULT_OUTPUT_DIRS[model_name]
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not weights_path.exists():
@@ -133,8 +144,8 @@ def predict_by_date(
             )
 
     prediction_np = prediction.squeeze().cpu().numpy().astype(np.float32)
-    prediction_path = output_dir / f"{model_name}_{date}_prediction.npy"
-    figure_path = output_dir / f"{model_name}_{date}_prediction.png"
+    prediction_path = output_dir / f"{date}.npy"
+    figure_path = output_dir / f"{date}.png"
     np.save(prediction_path, prediction_np)
 
     visualize_results(
@@ -187,7 +198,7 @@ def main():
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=OUTPUT_PREDICTIONS_DIR,
+        default=None,
         help="Directory for saved .npy prediction and .png visualization.",
     )
     parser.add_argument(

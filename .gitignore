@@ -42,4 +42,4 @@ notebooks/
 reports
 
 # Unet Large weights
-outputs/models_weights/unet_large_final.pth
+outputs/models/unet_large_final.pth
