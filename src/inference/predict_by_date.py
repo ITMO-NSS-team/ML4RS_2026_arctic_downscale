@@ -15,35 +15,17 @@ if str(SRC_ROOT) not in sys.path:
 matplotlib.use("Agg")
 
 from config import (
-    ATTENTION_UNET_PREDICTIONS_DIR,
     DEVICE,
-    LIGHT_UNET_PREDICTIONS_DIR,
     MASAM2_DIR,
+    MODEL_CONFIGS,
     OSISAF_DIR,
-    OUTPUT_MODELS_DIR,
 )
 from dataset import IceConcentrationDataset
 from visualization.visualization import visualize_results
 
 
-MODEL_MODULES = {
-    "unet_light": "models.unet_light",
-    "attention_unet": "models.attention_unet",
-}
-
-MODEL_CLASSES = {
-    "unet_light": "UNetLight",
-    "attention_unet": "AttentionUNet",
-}
-
-DEFAULT_WEIGHTS = {
-    "unet_light": OUTPUT_MODELS_DIR / "unet_light_final.pth",
-    "attention_unet": OUTPUT_MODELS_DIR / "attention_unet_final.pth",
-}
-
-DEFAULT_OUTPUT_DIRS = {
-    "unet_light": LIGHT_UNET_PREDICTIONS_DIR,
-    "attention_unet": ATTENTION_UNET_PREDICTIONS_DIR,
+PREDICTION_MODEL_CONFIGS = {
+    name: config for name, config in MODEL_CONFIGS.items()
 }
 
 
@@ -59,14 +41,15 @@ def load_model(model_name, weights_path):
     Load a prediction model and weights.
 
     Args:
-        model_name: Model key from MODEL_MODULES.
+        model_name: Model key from MODEL_CONFIGS.
         weights_path: Path to weights or checkpoint.
 
     Returns:
         Model in evaluation mode.
     """
-    module = importlib.import_module(MODEL_MODULES[model_name])
-    model_class = getattr(module, MODEL_CLASSES[model_name])
+    model_config = PREDICTION_MODEL_CONFIGS[model_name]
+    module = importlib.import_module(model_config["module"])
+    model_class = getattr(module, model_config["class_name"])
     model = model_class(in_channels=1, out_channels=1).to(DEVICE)
 
     checkpoint = torch.load(weights_path, map_location=DEVICE)
@@ -108,7 +91,7 @@ def predict_by_date(
     Run one-date prediction and save array and figure outputs.
 
     Args:
-        model_name: Model key from MODEL_MODULES.
+        model_name: Model key from MODEL_CONFIGS.
         date: Prediction date in YYYYMMDD format.
         weights_path: Optional path to weights or checkpoint.
         output_dir: Optional directory for prediction outputs.
@@ -118,8 +101,9 @@ def predict_by_date(
     Returns:
         Paths to the saved prediction array and figure.
     """
-    weights_path = Path(weights_path) if weights_path else DEFAULT_WEIGHTS[model_name]
-    output_dir = Path(output_dir) if output_dir else DEFAULT_OUTPUT_DIRS[model_name]
+    model_config = PREDICTION_MODEL_CONFIGS[model_name]
+    weights_path = Path(weights_path) if weights_path else model_config["final_path"]
+    output_dir = Path(output_dir) if output_dir else model_config["prediction_dir"]
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not weights_path.exists():
@@ -179,7 +163,7 @@ def main():
     )
     parser.add_argument(
         "--model",
-        choices=tuple(MODEL_MODULES.keys()),
+        choices=tuple(PREDICTION_MODEL_CONFIGS.keys()),
         required=True,
         help="Model architecture.",
     )

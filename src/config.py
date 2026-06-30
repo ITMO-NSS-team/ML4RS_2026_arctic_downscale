@@ -3,16 +3,19 @@ from pathlib import Path
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / "data"
 OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-OSISAF_DIR = "./data/OSISAF"
-MASAM2_DIR = "./data/MASAM2"
-OSISAF_REPROJECTED_DIR = "./data/OSISAF_reproj_matrices"
-MASIE_REPROJECTED_DIR = "./data/MASIE_reproj_matrices"
-MANUAL_HYBRID_REPROJECTED_DIR = "./data/ManualHybrid_reproj_matrices"
-MASAM2_LANDMASK_PATH = "./data/MASAM2_landmask.npy"
+OSISAF_DIR = DATA_DIR / "OSISAF"
+MASAM2_DIR = DATA_DIR / "MASAM2"
+MASAM2_RAW_DIR = DATA_DIR / "MASAM2_raw"
+OSISAF_REPROJECTED_DIR = DATA_DIR / "OSISAF_reproj_matrices"
+MASIE_REPROJECTED_DIR = DATA_DIR / "MASIE_reproj_matrices"
+MANUAL_HYBRID_REPROJECTED_DIR = DATA_DIR / "ManualHybrid_reproj_matrices"
+MASAM2_LANDMASK_PATH = DATA_DIR / "MASAM2_landmask.npy"
+MASAM2_MISSED_DATES_PATH = DATA_DIR / "masam2_missed.txt"
 
 OUTPUT_MODELS_DIR = OUTPUTS_DIR / "models"
 OUTPUT_PREDICTIONS_DIR = OUTPUTS_DIR / "predictions"
@@ -22,4 +25,28 @@ LIGHT_UNET_PREDICTIONS_DIR = OUTPUT_PREDICTIONS_DIR / "light_unet"
 ATTENTION_UNET_PREDICTIONS_DIR = OUTPUT_PREDICTIONS_DIR / "attention_unet"
 MAP_COMPARISON_FIGURES_DIR = OUTPUT_FIGURES_DIR / "prediction_comparison_images"
 
-LIGHT_MODEL_PATH = OUTPUT_MODELS_DIR / "unet_light_final.pth"
+LIGHT_UNET_BEST_MODEL_PATH = OUTPUT_MODELS_DIR / "unet_light_best.pth"
+LIGHT_UNET_FINAL_MODEL_PATH = OUTPUT_MODELS_DIR / "unet_light_final.pth"
+ATTENTION_UNET_BEST_MODEL_PATH = OUTPUT_MODELS_DIR / "attention_unet_best.pth"
+ATTENTION_UNET_FINAL_MODEL_PATH = OUTPUT_MODELS_DIR / "attention_unet_final.pth"
+
+TRAIN_DATE_RANGE = ("20120701", "20201231")
+VAL_DATE_RANGE = ("20210101", "20221231")
+TEST_DATE_RANGE = ("20230101", "20250630")
+
+MODEL_CONFIGS = {
+    "unet_light": {
+        "module": "models.unet_light",
+        "class_name": "UNetLight",
+        "best_path": LIGHT_UNET_BEST_MODEL_PATH,
+        "final_path": LIGHT_UNET_FINAL_MODEL_PATH,
+        "prediction_dir": LIGHT_UNET_PREDICTIONS_DIR,
+    },
+    "attention_unet": {
+        "module": "models.attention_unet",
+        "class_name": "AttentionUNet",
+        "best_path": ATTENTION_UNET_BEST_MODEL_PATH,
+        "final_path": ATTENTION_UNET_FINAL_MODEL_PATH,
+        "prediction_dir": ATTENTION_UNET_PREDICTIONS_DIR,
+    },
+}

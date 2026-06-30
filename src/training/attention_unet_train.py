@@ -12,16 +12,24 @@ import torch.optim as optim
 import torchmetrics
 from tqdm import tqdm
 
-from config import DEVICE, MASAM2_DIR, OSISAF_DIR, OUTPUT_FIGURES_DIR, OUTPUT_MODELS_DIR
+from config import (
+    ATTENTION_UNET_BEST_MODEL_PATH,
+    ATTENTION_UNET_FINAL_MODEL_PATH,
+    DEVICE,
+    MASAM2_DIR,
+    OSISAF_DIR,
+    OUTPUT_FIGURES_DIR,
+    TEST_DATE_RANGE,
+    TRAIN_DATE_RANGE,
+    VAL_DATE_RANGE,
+)
 from dataset import create_dataloaders
 from models.attention_unet import AttentionUNet
 from visualization.visualization import plot_metrics, visualize_results
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-MODELS_DIR = OUTPUT_MODELS_DIR
-BEST_MODEL_PATH = MODELS_DIR / "attention_unet_best.pth"
-FINAL_MODEL_PATH = MODELS_DIR / "attention_unet_final.pth"
+BEST_MODEL_PATH = ATTENTION_UNET_BEST_MODEL_PATH
+FINAL_MODEL_PATH = ATTENTION_UNET_FINAL_MODEL_PATH
 
 
 def train_attention_unet(
@@ -52,7 +60,7 @@ def train_attention_unet(
     Returns:
         Dictionary with the model and metric histories.
     """
-    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    BEST_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     print("=" * 70)
     print("TRAINING ATTENTION U-NET MODEL")
@@ -317,9 +325,9 @@ if __name__ == "__main__":
     train_loader, val_loader, test_loader, full_dataset = create_dataloaders(
         osisaf_dir=OSISAF_DIR,
         masam2_dir=MASAM2_DIR,
-        train_date_range=("20120701", "20201231"),
-        val_date_range=("20210101", "20221231"),
-        test_date_range=("20230101", "20250630"),
+        train_date_range=TRAIN_DATE_RANGE,
+        val_date_range=VAL_DATE_RANGE,
+        test_date_range=TEST_DATE_RANGE,
         batch_size=8,
         with_missed=False,
     )

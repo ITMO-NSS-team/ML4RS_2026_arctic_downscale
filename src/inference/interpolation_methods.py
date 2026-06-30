@@ -297,7 +297,13 @@ def evaluate_interpolation_methods(
 
 def main():
     """Parse CLI arguments and run interpolation evaluation"""
-    from config import MASAM2_DIR, OSISAF_DIR
+    from config import (
+        MASAM2_DIR,
+        OSISAF_DIR,
+        TEST_DATE_RANGE,
+        TRAIN_DATE_RANGE,
+        VAL_DATE_RANGE,
+    )
 
     parser = argparse.ArgumentParser(
         description="Evaluate interpolation baselines on train/val/test date splits."
@@ -305,19 +311,19 @@ def main():
     parser.add_argument(
         "--train-range",
         type=parse_date_range,
-        default=("20120701", "20201231"),
+        default=TRAIN_DATE_RANGE,
         help="Train date range as START,END in YYYYMMDD format.",
     )
     parser.add_argument(
         "--val-range",
         type=parse_date_range,
-        default=("20210101", "20221231"),
+        default=VAL_DATE_RANGE,
         help="Validation date range as START,END in YYYYMMDD format.",
     )
     parser.add_argument(
         "--test-range",
         type=parse_date_range,
-        default=("20230101", "20250630"),
+        default=TEST_DATE_RANGE,
         help="Test date range as START,END in YYYYMMDD format.",
     )
     parser.add_argument("--batch-size", type=int, default=8)

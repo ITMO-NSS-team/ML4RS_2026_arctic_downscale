@@ -11,19 +11,6 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 
-MODEL_MODULES = {
-    "unet_light": "models.unet_light",
-    "attention_unet": "models.attention_unet",
-    "unet_large": "models.unet_large",
-}
-
-MODEL_CLASSES = {
-    "unet_light": "UNetLight",
-    "attention_unet": "AttentionUNet",
-    "unet_large": "UNetLarge",
-}
-
-
 def parse_date_range(value):
     """
     Parse a comma-separated CLI date range.
@@ -45,7 +32,7 @@ def load_model(model_name, weights_path):
     Load a model architecture and its weights.
 
     Args:
-        model_name: Model key from MODEL_MODULES.
+        model_name: Model key from MODEL_CONFIGS.
         weights_path: Path to a state dict or checkpoint.
 
     Returns:
@@ -53,10 +40,11 @@ def load_model(model_name, weights_path):
     """
     import torch
 
-    from config import DEVICE
+    from config import DEVICE, MODEL_CONFIGS
 
-    module = importlib.import_module(MODEL_MODULES[model_name])
-    model_class = getattr(module, MODEL_CLASSES[model_name])
+    model_config = MODEL_CONFIGS[model_name]
+    module = importlib.import_module(model_config["module"])
+    model_class = getattr(module, model_config["class_name"])
     model = model_class(in_channels=1, out_channels=1).to(DEVICE)
 
     checkpoint = torch.load(weights_path, map_location=DEVICE)
@@ -250,7 +238,7 @@ def evaluate_model(
     Evaluate a trained model on train, validation, and test splits.
 
     Args:
-        model_name: Model key from MODEL_MODULES.
+        model_name: Model key from MODEL_CONFIGS.
         weights_path: Path to weights or checkpoint.
         train_date_range: Training range as start and end dates.
         val_date_range: Validation range as start and end dates.
@@ -292,37 +280,39 @@ def evaluate_model(
 
 def main():
     """Parse CLI arguments and run model evaluation"""
+    from config import MODEL_CONFIGS, TEST_DATE_RANGE, TRAIN_DATE_RANGE, VAL_DATE_RANGE
+
     parser = argparse.ArgumentParser(
         description="Evaluate a trained U-Net model on train/val/test date splits."
     )
     parser.add_argument(
         "--model",
-        choices=tuple(MODEL_MODULES.keys()),
+        choices=tuple(MODEL_CONFIGS.keys()),
         default="unet_light",
         help="Model architecture used for the checkpoint.",
     )
     parser.add_argument(
         "--weights",
         type=Path,
-        required=True,
-        help="Path to .pth weights or training checkpoint.",
+        default=None,
+        help="Path to .pth weights or training checkpoint. Defaults to the model final path.",
     )
     parser.add_argument(
         "--train-range",
         type=parse_date_range,
-        default=("20120701", "20201231"),
+        default=TRAIN_DATE_RANGE,
         help="Train date range as START,END in YYYYMMDD format.",
     )
     parser.add_argument(
         "--val-range",
         type=parse_date_range,
-        default=("20210101", "20221231"),
+        default=VAL_DATE_RANGE,
         help="Validation date range as START,END in YYYYMMDD format.",
     )
     parser.add_argument(
         "--test-range",
         type=parse_date_range,
-        default=("20230101", "20250630"),
+        default=TEST_DATE_RANGE,
         help="Test date range as START,END in YYYYMMDD format.",
     )
     parser.add_argument("--batch-size", type=int, default=8)
@@ -343,7 +333,7 @@ def main():
 
     evaluate_model(
         model_name=args.model,
-        weights_path=args.weights,
+        weights_path=args.weights or MODEL_CONFIGS[args.model]["final_path"],
         train_date_range=args.train_range,
         val_date_range=args.val_range,
         test_date_range=args.test_range,

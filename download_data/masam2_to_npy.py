@@ -1,11 +1,19 @@
 import os
 import shutil
+import sys
 import tempfile
 import warnings
+from pathlib import Path
 
 import numpy as np
 import xarray as xr
 from scipy import interpolate
+
+SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from config import MASAM2_DIR, MASAM2_RAW_DIR
 
 warnings.filterwarnings("ignore")
 
@@ -24,7 +32,7 @@ class MASAM2_to_NPY_Converter:
         """
         self.masam2_dir = masam2_dir
         if output_dir is None:
-            self.output_dir = os.path.join(os.path.dirname(masam2_dir), "MASAM2_npy")
+            self.output_dir = MASAM2_DIR
         else:
             self.output_dir = output_dir
 
@@ -262,7 +270,7 @@ def quick_convert(masam2_file, output_dir=None):
         output_dir: Optional directory for generated .npy files.
     """
     if output_dir is None:
-        output_dir = os.path.join(os.path.dirname(masam2_file), "npy_output")
+        output_dir = MASAM2_DIR
 
     converter = MASAM2_to_NPY_Converter(
         masam2_dir=os.path.dirname(masam2_file), output_dir=output_dir
@@ -326,13 +334,11 @@ if __name__ == "__main__":
                 month = "0" + month
 
             filename = f"masam2.{year}{month}.nc"
-            input_file = f"D:/MASAM2/{year}/{filename}"
+            input_file = MASAM2_RAW_DIR / year / filename
 
             if os.path.exists(input_file):
                 print(f"File found: {input_file}")
-                output_dir = os.path.join(
-                    os.path.dirname(os.path.dirname(input_file)), "MASAM2_npy"
-                )
+                output_dir = MASAM2_DIR
                 print(f" The output directory: {output_dir}")
 
                 quick_convert(input_file, output_dir)
