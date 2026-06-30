@@ -32,6 +32,20 @@ data/
 `-- masam2_missed.txt
 ```
 
+### Preprocessing Baselines
+
+To reproject OSISAF NetCDF files to the comparison grid:
+
+```bash
+uv run python src/preprocessing/osisaf_reproject.py
+```
+
+To build the manual hybrid baseline from reprojected OSISAF and MASIE arrays:
+
+```bash
+uv run python src/preprocessing/build_manual_hybrid.py
+```
+
 ### Training the Lightweight Model
 
 To train the lightweight U-Net model from the paper:
