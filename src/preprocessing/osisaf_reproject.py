@@ -191,6 +191,15 @@ def crop_bounds_to_slice(bounds):
     return (slice(y_start, y_end), slice(x_start, x_end))
 
 
+def find_netcdf_files(input_dir):
+    """Find NetCDF files recursively under an input directory."""
+    return sorted(
+        path
+        for pattern in ("*.nc", "*.nc4")
+        for path in Path(input_dir).rglob(pattern)
+    )
+
+
 def reproject_osisaf_directory(
     input_dir=OSISAF_DIR,
     target_grid_path=MASIE_TARGET_GRID_PATH,
@@ -218,9 +227,9 @@ def reproject_osisaf_directory(
             print(f"Mask loading failed: {error}")
             print("Continuing without mask.")
 
-    input_files = sorted(input_dir.glob("*.nc"))
+    input_files = find_netcdf_files(input_dir)
     if not input_files:
-        print(f"No .nc files found in {input_dir}")
+        print(f"No .nc or .nc4 files found in {input_dir}")
         return []
 
     outputs = []

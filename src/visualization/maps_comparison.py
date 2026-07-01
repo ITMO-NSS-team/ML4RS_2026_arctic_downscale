@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import re
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,6 +20,32 @@ from config import (
     MANUAL_HYBRID_REPROJECTED_DIR,
     OSISAF_REPROJECTED_DIR,
 )
+
+
+def extract_date_from_filename(filename):
+    """Extract an YYYYMMDD date from a filename."""
+    match = re.search(r"(\d{8})", filename)
+    if match is None:
+        return None
+    return match.group(1)
+
+
+def index_npy_files_by_date(directory):
+    """Index .npy files recursively by date from filename."""
+    files_by_date = {}
+    for path in sorted(Path(directory).rglob("*.npy")):
+        date = extract_date_from_filename(path.name)
+        if date is not None:
+            files_by_date.setdefault(date, path)
+    return files_by_date
+
+
+def load_by_date(files_by_date, date, label):
+    """Load one date from a recursively indexed .npy directory."""
+    path = files_by_date.get(date)
+    if path is None:
+        raise FileNotFoundError(f"{label} file not found for date {date}")
+    return np.load(path)
 
 
 def compare_prediction_maps(
@@ -66,6 +93,13 @@ def compare_prediction_maps(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    light_unet_by_date = index_npy_files_by_date(light_unet_dir)
+    attention_unet_by_date = index_npy_files_by_date(attention_unet_dir)
+    osisaf_by_date = index_npy_files_by_date(osisaf_dir)
+    masie_by_date = index_npy_files_by_date(masie_dir)
+    hybrid_by_date = index_npy_files_by_date(hybrid_dir)
+    masam2_by_date = index_npy_files_by_date(masam2_dir)
+
     masam2_mask = np.load(masam2_landmask_path)
     mask_rgba = np.zeros((*masam2_mask.shape, 4), dtype=np.float32)
     mask_rgba[masam2_mask == 120] = [0.8, 0.7, 0.7, 1]
@@ -76,13 +110,17 @@ def compare_prediction_maps(
     for date in dates:
         try:
             print(date)
-            osisaf_matrix = np.load(osisaf_dir / f"{date}.npy")
-            masie_matrix = np.load(masie_dir / f"{date}.npy")
-            hybrid_matrix = np.load(hybrid_dir / f"{date}.npy")
-            masam2_matrix = np.load(masam2_dir / f"{date}.npy")
+            osisaf_matrix = load_by_date(osisaf_by_date, date, "OSISAF")
+            masie_matrix = load_by_date(masie_by_date, date, "MASIE")
+            hybrid_matrix = load_by_date(hybrid_by_date, date, "Manual hybrid")
+            masam2_matrix = load_by_date(masam2_by_date, date, "MASAM2")
 
-            light_unet = np.load(light_unet_dir / f"{date}.npy")
-            attention_unet = np.load(attention_unet_dir / f"{date}.npy")
+            light_unet = load_by_date(light_unet_by_date, date, "Light U-Net")
+            attention_unet = load_by_date(
+                attention_unet_by_date,
+                date,
+                "Attention U-Net",
+            )
 
             osisaf_matrix = osisaf_matrix[row_start:row_end, col_start:col_end]
             masie_matrix = masie_matrix[row_start:row_end, col_start:col_end]

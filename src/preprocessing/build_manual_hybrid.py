@@ -1,4 +1,5 @@
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -14,6 +15,24 @@ from config import (
     MASIE_REPROJECTED_DIR,
     OSISAF_REPROJECTED_DIR,
 )
+
+
+def extract_date_from_filename(filename):
+    """Extract an YYYYMMDD date from a filename."""
+    match = re.search(r"(\d{8})", filename)
+    if match is None:
+        return None
+    return match.group(1)
+
+
+def index_npy_files_by_date(directory):
+    """Index .npy files recursively by date from filename."""
+    files_by_date = {}
+    for path in sorted(Path(directory).rglob("*.npy")):
+        date = extract_date_from_filename(path.name)
+        if date is not None:
+            files_by_date.setdefault(date, path)
+    return files_by_date
 
 
 def build_hybrid_matrix(osisaf_matrix, masie_matrix, threshold=0.15):
@@ -49,12 +68,17 @@ def build_manual_hybrid_directory(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    masie_by_date = index_npy_files_by_date(masie_dir)
     outputs = []
-    for osisaf_path in sorted(osisaf_dir.glob("*.npy")):
-        date = osisaf_path.stem
-        masie_path = masie_dir / osisaf_path.name
-        if not masie_path.exists():
-            print(f"Skipping {date}: MASIE file not found at {masie_path}")
+    for osisaf_path in sorted(osisaf_dir.rglob("*.npy")):
+        date = extract_date_from_filename(osisaf_path.name)
+        if date is None:
+            print(f"Skipping {osisaf_path}: no YYYYMMDD date in filename")
+            continue
+
+        masie_path = masie_by_date.get(date)
+        if masie_path is None:
+            print(f"Skipping {date}: MASIE file not found under {masie_dir}")
             continue
 
         print(date)
