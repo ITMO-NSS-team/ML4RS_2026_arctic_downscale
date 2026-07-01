@@ -99,13 +99,15 @@ class MASAM2_to_NPY_Converter:
             print(f"File reading error: {e}")
             return None
 
-    def convert_masam2_file(self, file_path, output_subdir=None):
+    def convert_masam2_file(self, file_path, output_subdir=None, start_date=None, end_date=None):
         """
         Convert one MASAM2 file into daily .npy arrays.
 
         Args:
             file_path: Path to the MASAM2 source file.
             output_subdir: Optional output subdirectory name.
+            start_date: Optional first date to save in YYYYMMDD format.
+            end_date: Optional last date to save in YYYYMMDD format.
         """
         print(f"\n{'=' * 60}")
         print(f"CONVERSION: {os.path.basename(file_path)}")
@@ -136,10 +138,7 @@ class MASAM2_to_NPY_Converter:
             else:
                 days = np.arange(1, ice_data.shape[0] + 1)
 
-            print("The data is uploaded:")
-            print(f"   Shape: {ice_data.shape} (days x height x width)")
-            print(f"   Data type: {ice_data.dtype}")
-            print(f"   Days: {days}")
+            print("The data is uploaded")
 
             file_name = os.path.basename(file_path)
             parts = file_name.split(".")
@@ -151,8 +150,7 @@ class MASAM2_to_NPY_Converter:
             self.stats["total_frames"] += ice_data.shape[0]
 
             if output_subdir is None:
-                base_name = f"{year}_{month}"
-                output_subdir = os.path.join(self.output_dir, base_name)
+                output_subdir = os.path.join(self.output_dir, year)
             else:
                 output_subdir = os.path.join(self.output_dir, output_subdir)
 
@@ -161,19 +159,20 @@ class MASAM2_to_NPY_Converter:
             print("\n Saving files .npy...")
 
             for i, day_num in enumerate(days):
+                day_str = f"{int(day_num):02d}"
+                current_date = f"{year}{month}{day_str}"
+                if start_date is not None and current_date < start_date:
+                    continue
+                if end_date is not None and current_date > end_date:
+                    continue
+
                 day_data = ice_data[i]
 
                 day_data_processed = self.process_values(day_data)
 
-                day_str = f"{int(day_num):02d}"
                 output_filename = f"masam2_{year}{month}{day_str}.npy"
                 output_path = os.path.join(output_subdir, output_filename)
                 np.save(output_path, day_data_processed)
-
-                all_days_dir = os.path.join(self.output_dir, "all_days")
-                os.makedirs(all_days_dir, exist_ok=True)
-                all_days_path = os.path.join(all_days_dir, output_filename)
-                np.save(all_days_path, day_data_processed)
 
                 print(
                     f"   Day {day_str}: {output_filename} "
@@ -183,7 +182,6 @@ class MASAM2_to_NPY_Converter:
 
             print("\n The file has been successfully converted!")
             print(f"   Files are saved in: {output_subdir}")
-            print(f"   Also in: {os.path.join(self.output_dir, 'all_days')}")
 
         except Exception as e:
             print(f" File conversion error {file_path}: {e}")
@@ -261,13 +259,15 @@ class MASAM2_to_NPY_Converter:
             self.convert_masam2_file(file_path)
 
 
-def quick_convert(masam2_file, output_dir=None):
+def quick_convert(masam2_file, output_dir=None, start_date=None, end_date=None):
     """
     Convert one MASAM2 file and print a sample output summary.
 
     Args:
         masam2_file: Path to the MASAM2 source file.
         output_dir: Optional directory for generated .npy files.
+        start_date: Optional first date to save in YYYYMMDD format.
+        end_date: Optional last date to save in YYYYMMDD format.
     """
     if output_dir is None:
         output_dir = MASAM2_DIR
@@ -275,7 +275,11 @@ def quick_convert(masam2_file, output_dir=None):
     converter = MASAM2_to_NPY_Converter(
         masam2_dir=os.path.dirname(masam2_file), output_dir=output_dir
     )
-    converter.convert_masam2_file(masam2_file)
+    converter.convert_masam2_file(
+        masam2_file,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
     npy_files = []
     for root, dirs, files in os.walk(output_dir):
@@ -326,22 +330,77 @@ def interpolate_missing_pixels(
 
 
 if __name__ == "__main__":
-    print("Converter MASAM2 to .npy format")
+    import argparse
+    import calendar
+    from datetime import datetime
 
-    for year in ["20" + str(i) for i in range(20, 21)]:
-        for month in [str(j) for j in range(1, 13)]:
-            if len(month) == 1:
-                month = "0" + month
+    def parse_date(value, is_end=False):
+        """Parse YYYYMM or YYYYMMDD to an inclusive YYYYMMDD string."""
+        value = value.strip()
+        if len(value) == 6:
+            date = datetime.strptime(value, "%Y%m")
+            if is_end:
+                last_day = calendar.monthrange(date.year, date.month)[1]
+                date = date.replace(day=last_day)
+            return date.strftime("%Y%m%d")
+        if len(value) == 8:
+            return datetime.strptime(value, "%Y%m%d").strftime("%Y%m%d")
+        raise argparse.ArgumentTypeError("Date must use YYYYMM or YYYYMMDD format")
 
-            filename = f"masam2.{year}{month}.nc"
-            input_file = MASAM2_RAW_DIR / year / filename
-
-            if os.path.exists(input_file):
-                print(f"File found: {input_file}")
-                output_dir = MASAM2_DIR
-                print(f" The output directory: {output_dir}")
-
-                quick_convert(input_file, output_dir)
-
+    def iter_months(start_date, end_date):
+        """Yield YYYY, MM pairs for all months in an inclusive range."""
+        current = datetime.strptime(start_date[:6], "%Y%m")
+        end = datetime.strptime(end_date[:6], "%Y%m")
+        while current <= end:
+            yield current.strftime("%Y"), current.strftime("%m")
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
             else:
-                print(f" File not found: {input_file}")
+                current = current.replace(month=current.month + 1)
+
+    parser = argparse.ArgumentParser(description="Convert monthly MASAM2 NetCDF files to .npy.")
+    parser.add_argument(
+        "--start",
+        required=True,
+        help="First month to convert, in YYYYMM or YYYYMMDD format.",
+    )
+    parser.add_argument(
+        "--end",
+        required=True,
+        help="Last month to convert, in YYYYMM or YYYYMMDD format.",
+    )
+    parser.add_argument(
+        "--input-dir",
+        type=Path,
+        default=MASAM2_RAW_DIR,
+        help="Root directory with MASAM2 NetCDF files grouped by year.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=MASAM2_DIR,
+        help="Directory for converted .npy files.",
+    )
+    args = parser.parse_args()
+    start_date = parse_date(args.start)
+    end_date = parse_date(args.end, is_end=True)
+
+    print("Converter MASAM2 to .npy format")
+    print(f"Input directory: {args.input_dir}")
+    print(f"Output directory: {args.output_dir}")
+    print(f"Date range: {start_date} - {end_date}")
+
+    for year, month in iter_months(start_date, end_date):
+        filename = f"masam2.{year}{month}.nc"
+        input_file = args.input_dir / year / filename
+
+        if os.path.exists(input_file):
+            print(f"File found: {input_file}")
+            quick_convert(
+                input_file,
+                args.output_dir,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        else:
+            print(f"File not found: {input_file}")

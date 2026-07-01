@@ -90,14 +90,16 @@ def build_manual_hybrid_directory(
             threshold=threshold,
         )
 
-        output_path = output_dir / f"{date}.npy"
+        year_dir = output_dir / date[:4]
+        year_dir.mkdir(parents=True, exist_ok=True)
+        output_path = year_dir / f"{date}.npy"
         np.save(output_path, hybrid_matrix)
         outputs.append(output_path)
 
         if save_previews:
             save_preview(
                 matrix=hybrid_matrix,
-                preview_path=output_dir / "preview" / f"{date}.png",
+                preview_path=year_dir / "preview" / f"{date}.png",
                 title=f"{date} - manual hybrid",
             )
 

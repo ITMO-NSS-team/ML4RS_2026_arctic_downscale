@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 import re
+import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -46,6 +47,13 @@ def load_by_date(files_by_date, date, label):
     if path is None:
         raise FileNotFoundError(f"{label} file not found for date {date}")
     return np.load(path)
+
+
+def validate_date(value):
+    """Validate a CLI date string in YYYYMMDD format."""
+    if len(value) != 8 or not value.isdigit():
+        raise argparse.ArgumentTypeError("Date must use YYYYMMDD format")
+    return value
 
 
 def compare_prediction_maps(
@@ -200,4 +208,30 @@ def compare_prediction_maps(
 
 
 if __name__ == "__main__":
-    compare_prediction_maps()
+    parser = argparse.ArgumentParser(
+        description="Save side-by-side prediction comparison maps."
+    )
+    parser.add_argument("--start", type=validate_date, required=True)
+    parser.add_argument("--end", type=validate_date, required=True)
+    parser.add_argument("--light-unet-dir", type=Path, default=LIGHT_UNET_PREDICTIONS_DIR)
+    parser.add_argument("--attention-unet-dir",type=Path,default=ATTENTION_UNET_PREDICTIONS_DIR)
+    parser.add_argument("--osisaf-dir", type=Path, default=OSISAF_REPROJECTED_DIR)
+    parser.add_argument("--masie-dir", type=Path, default=MASIE_REPROJECTED_DIR)
+    parser.add_argument("--hybrid-dir", type=Path, default=MANUAL_HYBRID_REPROJECTED_DIR)
+    parser.add_argument("--masam2-dir", type=Path, default=MASAM2_DIR)
+    parser.add_argument("--landmask", type=Path, default=MASAM2_LANDMASK_PATH)
+    parser.add_argument("--output-dir", type=Path, default=MAP_COMPARISON_FIGURES_DIR)
+    args = parser.parse_args()
+
+    compare_prediction_maps(
+        start_date=args.start,
+        end_date=args.end,
+        light_unet_dir=args.light_unet_dir,
+        attention_unet_dir=args.attention_unet_dir,
+        osisaf_dir=args.osisaf_dir,
+        masie_dir=args.masie_dir,
+        hybrid_dir=args.hybrid_dir,
+        masam2_dir=args.masam2_dir,
+        masam2_landmask_path=args.landmask,
+        output_dir=args.output_dir,
+    )
