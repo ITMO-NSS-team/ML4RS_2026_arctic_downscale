@@ -11,9 +11,9 @@ The main model is `UNetLight`, a compact U-Net variant for single-channel sea ic
 We also evaluate `AttentionUNet`, which keeps the same encoder-decoder backbone but adds attention gates to the skip connections. These gates filter encoder features before concatenation with decoder features, making the model heavier in computation and memory use. In our experiments, this extra complexity did not provide a meaningful overall improvement over `UNetLight`; therefore, the lightweight U-Net is the preferred approach and the main model used in this repository.
 
 <p align="center">
-  <img src="media/unet_models_architecture.png" alt="UNetLight architecture and operational setup" width="100%">
+  <img src="media/unet_models_architecture.png" alt="Light U-Net and Attention U-Net architectures and operational setup for OSISAF downscaling" width="100%">
   <br>
-  <em>Figure 1. Light U-Net architecture and operational setup for OSISAF downscaling.</em>
+  <em>Figure 1. Light U-Net and Attention U-Net architectures and operational setup for OSISAF downscaling.</em>
 </p>
 
 ## Results
