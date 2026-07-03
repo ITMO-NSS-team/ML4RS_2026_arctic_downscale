@@ -1,6 +1,6 @@
 # Deep Learning for Super-Resolution of Sea Ice Concentration
 
-This repo contains official code and weights for **Deep Learning for Super-Resolution of Sea Ice Concentration: Case Study of OSISAF Down-Scaler**, submitted to the ICLR 2026 Machine Learning for Remote Sensing (ML4RS) Workshop.
+This repository contains the official code and weights for **Deep Learning for Super-Resolution of Sea Ice Concentration: Case Study of OSISAF Down-Scaler**, originally submitted to the ICLR 2026 Machine Learning for Remote Sensing (ML4RS) Workshop. The current version extends the workshop implementation toward the IEEE GRSL journal submission with a cleaner structure, additional baselines, and updated documentation.
 
 This work addresses the gap between long-term but coarse OSI SAF sea ice concentration records and high-resolution multi-sensor products such as MASAM2. We train a lightweight deep learning downscaler to transform OSI SAF fields from approximately **25 km** resolution into MASAM2-like **4 km** fields while learning finer ice-edge geometry and physically more consistent concentration patterns. After training, the model requires only OSI SAF input, enabling high-resolution reconstruction of historical Arctic sea ice concentration fields beyond the MASAM2 observation period.
 
@@ -11,7 +11,7 @@ The main model is `UNetLight`, a compact U-Net variant for single-channel sea ic
 We also evaluate `AttentionUNet`, which keeps the same encoder-decoder backbone but adds attention gates to the skip connections. These gates filter encoder features before concatenation with decoder features, making the model heavier in computation and memory use. In our experiments, this extra complexity did not provide a meaningful overall improvement over `UNetLight`; therefore, the lightweight U-Net is the preferred approach and the main model used in this repository.
 
 <p align="center">
-  <img src="media/unet_light_architecture.png" alt="UNetLight architecture and operational setup" width="100%">
+  <img src="media/unet_models_architecture.png" alt="UNetLight architecture and operational setup" width="100%">
   <br>
   <em>Figure 1. Light U-Net architecture and operational setup for OSISAF downscaling.</em>
 </p>
@@ -30,7 +30,7 @@ Example output for 2023-05-01. The `UNetLight` model reconstructs a high-resolut
 
 ### Regional Method Comparison
 
-The figure below compares classical interpolation, manual hybridization with MASIE contours, and the Light U-Net prediction in the same Arctic region. The Light U-Net result is highlighted in green. The red line on each image is the ground-truth ice edge.
+The figure below compares classical interpolation, manual hybridization with MASIE contours, and the Light U-Net prediction in the same Arctic region. The Light U-Net result is highlighted in green. Its advantage is especially visible near Novaya Zemlya, where the model better preserves the ice-edge structure. The red line on each image is the ground-truth ice edge.
 
 <p align="center">
   <img src="media/method_comparison_region.png" alt="Regional comparison of interpolation, manual hybrid, and Light U-Net methods" width="72%">
@@ -207,4 +207,16 @@ Evaluate interpolation baselines:
 
 ```bash
 uv run python src/inference/interpolation_methods.py
+```
+
+## Citation
+```
+@inproceedings{
+borisova2026deep,
+title={Deep Learning for Super-resolution of Sea Ice Concentration: Case Study of {OSISAF} Downscaler},
+author={Julia Borisova and Dmitry Morozov and Dmitry Gilemkhanov and Nikolay Nikitin},
+booktitle={4th ICLR Workshop on Machine Learning for Remote Sensing (Main Track)},
+year={2026},
+url={https://openreview.net/forum?id=nLxgFdKi30}
+}
 ```

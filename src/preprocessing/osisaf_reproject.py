@@ -202,6 +202,8 @@ def find_netcdf_files(input_dir):
 
 def reproject_osisaf_directory(
     input_dir=OSISAF_DIR,
+    # This file is not tracked because of its size. It is a standard MASIE .nc
+    # file with latitude and longitude variables added for CDO remapping.
     target_grid_path=MASIE_TARGET_GRID_PATH,
     output_dir=OSISAF_REPROJECTED_DIR,
     landmask_path=MASAM2_MASK_NETCDF_PATH,
