@@ -1,5 +1,7 @@
+import ast
 import os
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
@@ -9,6 +11,8 @@ from torch.utils.data import DataLoader, Dataset, Subset
 
 
 class IceConcentrationDataset(Dataset):
+    """Dataset of matched OSISAF inputs and MASAM2 targets."""
+
     def __init__(
         self,
         osisaf_dir: str,
@@ -18,14 +22,14 @@ class IceConcentrationDataset(Dataset):
         date_pattern: str = r"(\d{8})",
     ):
         """
-        Initializing the dataset
+        Initialize paired sea ice concentration samples.
 
         Args:
-            osisaf_dir: Path to directory with OSISAF (.npy)
-            masam2_dir: Path to directory with  MASAM2 (.npy)
-            transform: transformations for input data (low resolution)
-            target_transform: conversions for target (high resolution)
-            date_pattern: regular expression for extracting a date from a file name
+            osisaf_dir: Path to directory with OSISAF .npy files.
+            masam2_dir: Path to directory with MASAM2 .npy files.
+            transform: Optional transform for low-resolution data.
+            target_transform: Optional transform for high-resolution data.
+            date_pattern: Regex for extracting dates from filenames.
         """
         self.osisaf_dir = Path(osisaf_dir)
         self.masam2_dir = Path(masam2_dir)
@@ -46,11 +50,17 @@ class IceConcentrationDataset(Dataset):
         )
 
     def _find_matching_pairs(self) -> List[Tuple[str, str]]:
+        """
+        Match OSISAF and MASAM2 files by date.
+
+        Returns:
+            Sorted list of paired file paths.
+        """
         osisaf_files = {
-            f: self._extract_date(f.name) for f in self.osisaf_dir.glob("*.npy")
+            f: self._extract_date(f.name) for f in self.osisaf_dir.rglob("*.npy")
         }
         masam2_files = {
-            f: self._extract_date(f.name) for f in self.masam2_dir.glob("*.npy")
+            f: self._extract_date(f.name) for f in self.masam2_dir.rglob("*.npy")
         }
 
         osisaf_files = {f: d for f, d in osisaf_files.items() if d is not None}
@@ -74,10 +84,20 @@ class IceConcentrationDataset(Dataset):
         return pairs
 
     def _extract_date(self, filename: str) -> Optional[str]:
+        """
+        Extract an YYYYMMDD date from a filename.
+
+        Args:
+            filename: Filename to inspect.
+
+        Returns:
+            Date string, or None if no date is found.
+        """
         match = re.search(self.date_pattern, filename)
         return match.group(1) if match else None
 
     def _init_resolutions(self):
+        """Load sample arrays and store input and target shapes."""
         osisaf_sample = np.load(self.pairs[0][0])
         masam2_sample = np.load(self.pairs[0][1])
 
@@ -89,27 +109,31 @@ class IceConcentrationDataset(Dataset):
             self.hr_shape[1] / self.lr_shape[1],
         )
 
-    def _preprocess_data(self, data: np.ndarray) -> np.ndarray:
-        data = data.astype(np.float32)
-        data = np.clip(data, 0, 101)
-        data = data / 101.0
+    def _preprocess_osisaf(self, data: np.ndarray) -> np.ndarray:
+        """Normalize OSISAF concentrations stored as percentages to [0, 1]."""
+        data = np.clip(data, 0, 100).astype(np.float32)
+        return data / 100.0
 
-        return data
+    def _preprocess_masam2(self, data: np.ndarray) -> np.ndarray:
+        """Convert already normalized MASAM2 target data to model precision."""
+        return data.astype(np.float32)
 
     def __len__(self) -> int:
+        """
+        Returns:
+            Dataset length.
+        """
         return len(self.pairs)
 
     def __getitem__(self, idx: int) -> dict:
         """
-        Getting a dataset element
+        Load and preprocess one matched sample.
+
+        Args:
+            idx: Sample index.
 
         Returns:
-            dict with keys:
-                'lr': low resolution tensor [1, H_lr, W_lr]
-                'hr': high resolution tensor [1, H_hr, W_hr]
-                'date': string with data in format YYYYMMDD
-                'lr_path': path to OSISAF file
-                'hr_path': path to  MASAM2 file
+            Dictionary with tensors, date, and source paths.
         """
         osisaf_path, masam2_path = self.pairs[idx]
 
@@ -118,8 +142,8 @@ class IceConcentrationDataset(Dataset):
         lr_data = np.load(osisaf_path)
         hr_data = np.load(masam2_path)
 
-        lr_data = self._preprocess_data(lr_data)
-        hr_data = self._preprocess_data(hr_data)
+        lr_data = self._preprocess_osisaf(lr_data)
+        hr_data = self._preprocess_masam2(hr_data)
 
         if self.transform:
             lr_data = self.transform(lr_data)
@@ -139,6 +163,12 @@ class IceConcentrationDataset(Dataset):
         }
 
     def get_statistics(self) -> dict:
+        """
+        Collect basic dataset statistics.
+
+        Returns:
+            Dictionary with pair count, shapes, scale factor, and date range.
+        """
         stats = {
             "total_pairs": len(self.pairs),
             "lr_resolution": self.lr_shape,
@@ -152,19 +182,148 @@ class IceConcentrationDataset(Dataset):
         return stats
 
 
+def _validate_date_range(name: str, date_range: Tuple[str, str]) -> Tuple[str, str]:
+    """
+    Validate an inclusive YYYYMMDD date range.
+
+    Args:
+        name: Range label for error messages.
+        date_range: Start and end date strings.
+
+    Returns:
+        Validated start and end date strings.
+    """
+    if len(date_range) != 2:
+        raise ValueError(f"{name} date range must contain a start and an end date")
+
+    start, end = date_range
+    for value in (start, end):
+        try:
+            datetime.strptime(value, "%Y%m%d")
+        except ValueError as error:
+            raise ValueError(
+                f"{name} date range value '{value}' must use YYYYMMDD format"
+            ) from error
+
+    if start > end:
+        raise ValueError(f"{name} date range start must not be later than its end")
+
+    return start, end
+
+
+def _load_missed_dates(missed_path: Path) -> set[str]:
+    """
+    Load MASAM2 dates that should be excluded.
+
+    Args:
+        missed_path: Path to the missed-dates text file.
+
+    Returns:
+        Set of date strings.
+    """
+    if not missed_path.exists():
+        raise FileNotFoundError(
+            f"MASAM2 missed-dates file not found: {missed_path}"
+        )
+
+    try:
+        entries = ast.literal_eval(missed_path.read_text(encoding="utf-8"))
+    except (SyntaxError, ValueError) as error:
+        raise ValueError(
+            f"Unable to parse MASAM2 missed-dates file: {missed_path}"
+        ) from error
+
+    if not isinstance(entries, (list, tuple, set)):
+        raise ValueError("MASAM2 missed-dates file must contain a sequence of filenames")
+
+    missed_dates = set()
+    for entry in entries:
+        match = re.search(r"(\d{8})", str(entry))
+        if match is None:
+            raise ValueError(f"Unable to extract a date from missed entry: {entry}")
+        missed_dates.add(match.group(1))
+
+    return missed_dates
+
+
 def create_dataloaders(
-    osisaf_dir, masam2_dir, batch_size=16, train_ratio=(0.7, 0.15, 0.15), num_workers=2
+    osisaf_dir,
+    masam2_dir,
+    train_date_range: Tuple[str, str],
+    val_date_range: Tuple[str, str],
+    test_date_range: Tuple[str, str],
+    batch_size=16,
+    num_workers=2,
+    with_missed: bool = False,
 ):
+    """
+    Create data loaders from sequential, inclusive date ranges.
+
+    Args:
+        osisaf_dir: Directory with OSISAF .npy files.
+        masam2_dir: Directory with MASAM2 .npy files.
+        train_date_range: Training range as start and end dates.
+        val_date_range: Validation range as start and end dates.
+        test_date_range: Test range as start and end dates.
+        batch_size: Batch size for all loaders.
+        num_workers: Number of DataLoader workers.
+        with_missed: Whether to keep MASAM2 missed-date pairs.
+
+    Returns:
+        Train, validation, test loaders, and the full dataset.
+
+    Ranges must use YYYYMMDD format and be ordered as train, validation, test.
+    Set with_missed=False to exclude dates listed in masam2_missed.txt located
+    next to the OSISAF and MASAM2 directories.
+    """
     full_dataset = IceConcentrationDataset(osisaf_dir=osisaf_dir, masam2_dir=masam2_dir)
 
-    total_size = len(full_dataset)
-    train_size = int(train_ratio[0] * total_size)
-    val_size = int(train_ratio[1] * total_size)
+    train_range = _validate_date_range("train", train_date_range)
+    val_range = _validate_date_range("validation", val_date_range)
+    test_range = _validate_date_range("test", test_date_range)
 
-    indices = list(range(len(full_dataset)))
-    train_indices = indices[:train_size]
-    val_indices = indices[train_size : train_size + val_size]
-    test_indices = indices[train_size + val_size :]
+    if not (train_range[1] < val_range[0] and val_range[1] < test_range[0]):
+        raise ValueError(
+            "Date ranges must be non-overlapping and ordered as train, validation, test"
+        )
+
+    train_indices = []
+    val_indices = []
+    test_indices = []
+    missed_dates = set()
+    if not with_missed:
+        missed_path = Path(masam2_dir).parent / "masam2_missed.txt"
+        missed_dates = _load_missed_dates(missed_path)
+    excluded_pairs = 0
+
+    for idx, (osisaf_path, _) in enumerate(full_dataset.pairs):
+        date = full_dataset._extract_date(os.path.basename(osisaf_path))
+
+        if date in missed_dates:
+            excluded_pairs += 1
+            continue
+
+        if train_range[0] <= date <= train_range[1]:
+            train_indices.append(idx)
+        elif val_range[0] <= date <= val_range[1]:
+            val_indices.append(idx)
+        elif test_range[0] <= date <= test_range[1]:
+            test_indices.append(idx)
+
+    for name, indices in (
+        ("train", train_indices),
+        ("validation", val_indices),
+        ("test", test_indices),
+    ):
+        if not indices:
+            raise ValueError(f"{name} date range has no matching data pairs")
+
+    print("Split method: sequential date ranges")
+    print(f"  Train: {train_range[0]} - {train_range[1]}")
+    print(f"  Validation: {val_range[0]} - {val_range[1]}")
+    print(f"  Test: {test_range[0]} - {test_range[1]}")
+    if not with_missed:
+        print(f"Excluded MASAM2 missed pairs: {excluded_pairs}")
 
     train_dataset = Subset(full_dataset, train_indices)
     val_dataset = Subset(full_dataset, val_indices)

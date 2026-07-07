@@ -13,5 +13,6 @@ dependencies = [
     "requests",
     "tqdm",
     "xarray",
+    "netCDF4",
     "scipy"
 ]
