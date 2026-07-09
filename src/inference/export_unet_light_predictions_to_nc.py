@@ -11,10 +11,11 @@ SRC_ROOT = Path(__file__).resolve().parents[1]
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from config import LIGHT_UNET_PREDICTIONS_DIR, MASAM2_RAW_DIR
+from config import LIGHT_UNET_PREDICTIONS_DIR, MASAM2_LANDMASK_PATH, MASAM2_RAW_DIR
 
 
 ICE_VARIABLE_NAME = "Sea_Ice_Concentration"
+LAND_MASK_VALUE = 120
 
 
 def validate_date(value):
@@ -119,6 +120,46 @@ def prediction_to_donor_orientation(prediction):
     return np.rot90(np.flip(prediction, axis=0), k=-1).astype(np.float32)
 
 
+def load_land_mask(landmask_path):
+    """
+    Load a MASAM2 land mask in the prediction matrix orientation.
+
+    Args:
+        landmask_path: Path to the MASAM2 land mask .npy file.
+
+    Returns:
+        Boolean mask where True marks land pixels.
+    """
+    landmask_path = Path(landmask_path)
+    if not landmask_path.exists():
+        raise FileNotFoundError(f"Land mask file not found: {landmask_path}")
+
+    landmask = np.load(landmask_path)
+    return landmask == LAND_MASK_VALUE
+
+
+def apply_land_mask(prediction, land_mask):
+    """
+    Zero prediction values over land.
+
+    Args:
+        prediction: Prediction matrix in .npy orientation.
+        land_mask: Boolean land mask in the same orientation.
+
+    Returns:
+        Prediction matrix with land pixels set to zero.
+    """
+    if prediction.shape != land_mask.shape:
+        raise ValueError(
+            f"Prediction shape {prediction.shape} does not match land mask "
+            f"shape {land_mask.shape}"
+        )
+
+    masked_prediction = prediction.copy()
+    masked_prediction[land_mask] = 0
+    return masked_prediction
+
+
 def copy_variable_attributes(source_variable, target_variable, exclude=None):
     """
     Copy NetCDF variable attributes.
@@ -134,7 +175,13 @@ def copy_variable_attributes(source_variable, target_variable, exclude=None):
             target_variable.setncattr(attr_name, source_variable.getncattr(attr_name))
 
 
-def create_daily_netcdf(prediction_path, donor_path, output_path, date):
+def create_daily_netcdf(
+    prediction_path,
+    donor_path,
+    output_path,
+    date,
+    landmask_path=MASAM2_LANDMASK_PATH,
+):
     """
     Create one daily NetCDF file from a Light U-Net prediction.
 
@@ -143,11 +190,18 @@ def create_daily_netcdf(prediction_path, donor_path, output_path, date):
         donor_path: Path to a MASAM2 donor NetCDF file.
         output_path: Path where the daily NetCDF file will be saved.
         date: Date in YYYYMMDD format.
+        landmask_path: Path to the MASAM2 land mask .npy file.
 
     Returns:
         Path to the saved NetCDF file.
     """
     prediction = np.load(prediction_path)
+    if prediction.ndim != 2:
+        raise ValueError(f"Prediction must be two-dimensional: {prediction_path}")
+
+    if landmask_path is not None:
+        land_mask = load_land_mask(landmask_path)
+        prediction = apply_land_mask(prediction, land_mask)
 
     oriented_prediction = prediction_to_donor_orientation(prediction)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -206,6 +260,7 @@ def export_predictions_to_netcdf(
     masam2_raw_dir=MASAM2_RAW_DIR,
     output_dir=None,
     donor_path=None,
+    landmask_path=MASAM2_LANDMASK_PATH,
     overwrite=False,
 ):
     """
@@ -218,6 +273,7 @@ def export_predictions_to_netcdf(
         masam2_raw_dir: Directory with raw MASAM2 donor NetCDF files.
         output_dir: Directory for daily NetCDF outputs.
         donor_path: Optional explicit donor NetCDF path.
+        landmask_path: Path to the MASAM2 land mask .npy file.
         overwrite: Whether to overwrite existing files.
 
     Returns:
@@ -241,6 +297,7 @@ def export_predictions_to_netcdf(
             donor_path=donor,
             output_path=output_path,
             date=date,
+            landmask_path=landmask_path,
         )
         print(f"Saved NetCDF: {saved_path}")
         saved_paths.append(saved_path)
@@ -280,6 +337,12 @@ def main():
         help="Explicit donor NetCDF file. Defaults to a matching MASAM2 month if available.",
     )
     parser.add_argument(
+        "--landmask",
+        type=Path,
+        default=MASAM2_LANDMASK_PATH,
+        help="MASAM2 land mask .npy file. Land pixels are set to zero before export.",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing NetCDF files.",
@@ -294,6 +357,7 @@ def main():
         masam2_raw_dir=args.masam2_raw_dir,
         output_dir=args.output_dir,
         donor_path=args.donor,
+        landmask_path=args.landmask,
         overwrite=args.overwrite,
     )
 
