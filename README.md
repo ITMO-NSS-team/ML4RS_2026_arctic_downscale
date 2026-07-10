@@ -165,13 +165,21 @@ uv run python src/training/unet_light_train.py
 
 The script trains `UNetLight`, saves the best checkpoint to `outputs/models/unet_light_best.pth`, and exports final weights to `outputs/models/unet_light_final.pth`.
 
-### Predict One Date
+### Compare Prediction with MASAM2
 
 ```bash
-uv run python src/inference/predict_by_date.py --model unet_light --date 20230501
+uv run python src/inference/comparison_predict_with_MASAM2.py --model unet_light --date 20230501
 ```
 
 The command saves both the predicted matrix and a visual comparison under `outputs/predictions/unet_light/`.
+
+### Predict by date
+
+```bash
+uv run python src/inference/predict_osisaf_by_date.py --model unet_light --date 19790101
+```
+
+The script finds the matching OSISAF file by date, runs the trained model, and saves the predicted MASAM2-like matrix under `outputs/predictions/unet_light/`.
 
 ### Evaluate a Trained Model
 
