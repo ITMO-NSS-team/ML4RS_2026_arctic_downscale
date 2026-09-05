@@ -46,7 +46,8 @@ class IceConcentrationDataset(Dataset):
         print(f"Resolution OSISAF (input): {self.lr_shape}")
         print(f"Resolution MASAM2 (target): {self.hr_shape}")
         print(
-            f"Resolution ratio: {self.scale_factor[0]:.2f}x (H) x {self.scale_factor[1]:.2f}x (W)"
+            f"Resolution ratio: {self.scale_factor[0]:.2f}x (H) x "
+            f"{self.scale_factor[1]:.2f}x (W)"
         )
 
     def _find_matching_pairs(self) -> List[Tuple[str, str]]:
@@ -115,8 +116,19 @@ class IceConcentrationDataset(Dataset):
         return data / 100.0
 
     def _preprocess_masam2(self, data: np.ndarray) -> np.ndarray:
-        """Convert already normalized MASAM2 target data to model precision."""
-        return data.astype(np.float32)
+        """Normalize MASAM2 percentages or already-normalized fields to [0, 1]."""
+        if not np.isfinite(data).all():
+            raise ValueError("MASAM2 matrix contains NaN or infinite values")
+        minimum = float(data.min())
+        maximum = float(data.max())
+        if minimum < 0.0 or maximum > 100.0:
+            raise ValueError(
+                f"MASAM2 matrix range [{minimum}, {maximum}] lies outside [0, 100]"
+            )
+        values = data.astype(np.float32)
+        if np.issubdtype(data.dtype, np.integer) or maximum > 1.0:
+            values = values / 100.0
+        return values
 
     def __len__(self) -> int:
         """
@@ -234,7 +246,9 @@ def _load_missed_dates(missed_path: Path) -> set[str]:
         ) from error
 
     if not isinstance(entries, (list, tuple, set)):
-        raise ValueError("MASAM2 missed-dates file must contain a sequence of filenames")
+        raise ValueError(
+            "MASAM2 missed-dates file must contain a sequence of filenames"
+        )
 
     missed_dates = set()
     for entry in entries:
@@ -255,6 +269,7 @@ def create_dataloaders(
     batch_size=16,
     num_workers=2,
     with_missed: bool = False,
+    missed_dates_path=None,
 ):
     """
     Create data loaders from sequential, inclusive date ranges.
@@ -268,6 +283,7 @@ def create_dataloaders(
         batch_size: Batch size for all loaders.
         num_workers: Number of DataLoader workers.
         with_missed: Whether to keep MASAM2 missed-date pairs.
+        missed_dates_path: Optional explicit path to masam2_missed.txt.
 
     Returns:
         Train, validation, test loaders, and the full dataset.
@@ -292,7 +308,11 @@ def create_dataloaders(
     test_indices = []
     missed_dates = set()
     if not with_missed:
-        missed_path = Path(masam2_dir).parent / "masam2_missed.txt"
+        missed_path = (
+            Path(missed_dates_path)
+            if missed_dates_path is not None
+            else Path(masam2_dir).parent / "masam2_missed.txt"
+        )
         missed_dates = _load_missed_dates(missed_path)
     excluded_pairs = 0
 

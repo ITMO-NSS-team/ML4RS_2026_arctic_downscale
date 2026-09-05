@@ -18,6 +18,7 @@ dist/
 .pdm-python
 .pdm-build/
 uv.lock
+ml4rs-kaggle-code.zip
 
 # Testing
 .coverage
@@ -30,6 +31,9 @@ htmlcov/
 # Notebooks
 .ipynb_checkpoints/
 notebooks/
+!notebooks/
+notebooks/*
+!notebooks/kaggle_fullframe_diffusion_training.ipynb
 
 # IDE
 .idea/
@@ -43,3 +47,7 @@ reports
 
 # Unet Large weights
 outputs/models/unet_large_final.pth
+
+docker
+.dockerignore
+tools

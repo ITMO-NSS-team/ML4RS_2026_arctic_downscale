@@ -10,6 +10,8 @@ SRC_ROOT = Path(__file__).resolve().parents[1]
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from config import SEA_ICE_THRESHOLD
+
 
 def parse_date_range(value):
     """
@@ -231,7 +233,7 @@ def evaluate_model(
     test_date_range,
     batch_size=8,
     num_workers=2,
-    threshold=0.15,
+    threshold=SEA_ICE_THRESHOLD,
     with_missed=False,
 ):
     """
@@ -295,7 +297,10 @@ def main():
         "--weights",
         type=Path,
         default=None,
-        help="Path to .pth weights or training checkpoint. Defaults to the model final path.",
+        help=(
+            "Path to .pth weights or training checkpoint. Defaults to the "
+            "model final path."
+        ),
     )
     parser.add_argument(
         "--train-range",
@@ -320,7 +325,7 @@ def main():
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.15,
+        default=SEA_ICE_THRESHOLD,
         help="Ice/no-ice threshold for BACC and IIEE.",
     )
     parser.add_argument(

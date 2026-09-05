@@ -187,6 +187,22 @@ The script finds the matching OSISAF file by date, runs the trained model, and s
 uv run python src/inference/evaluate_model.py --model unet_light
 ```
 
+For diffusion inference and evaluation, place the selected EMA checkpoint at
+`outputs/models/fullframe_diffusion_best.pth`, or override it with
+`--checkpoint`:
+
+```bash
+uv run python src/inference/predict_fullframe_diffusion.py --date 20240101
+uv run python src/inference/evaluate_fullframe_diffusion.py --split test
+uv run python src/visualization/fullframe_diffusion_visualization.py --date 20240101
+```
+
+Predictions and metric JSON files are written under `outputs/predictions/` and
+`outputs/metrics/`. The visualization command reads an existing prediction and
+saves its OSISAF/prediction/MASAM2/error comparison as PNG. See
+`src/fullframe_diffusion/README.md` for architecture, checkpoint, memory-probe,
+and advanced CLI details.
+
 ### Plot Regional Method Comparison
 
 Generate the side-by-side regional comparison figure after the Light U-Net predictions, Attention U-Net predictions, OSISAF reprojection, MASIE reprojection, manual hybrid arrays, and MASAM2 targets are available:

@@ -61,6 +61,7 @@ class MASAM2_to_NPY_Converter:
             xarray Dataset, or None if the file cannot be opened.
         """
         print(f"Reading file: {os.path.basename(file_path)}")
+        file_path = os.fspath(file_path)
 
         try:
             engines_to_try = ["h5netcdf", "netcdf4"]
@@ -75,7 +76,10 @@ class MASAM2_to_NPY_Converter:
             temp_file = os.path.join(
                 self.temp_dir, os.path.basename(file_path).replace(".gz", "")
             )
-            if file_path.endswith(".gz"):
+            with open(file_path, "rb") as f:
+                is_gzipped = f.read(2) == b"\x1f\x8b"
+
+            if is_gzipped:
                 import gzip
 
                 with gzip.open(file_path, "rb") as f_in:
@@ -99,7 +103,13 @@ class MASAM2_to_NPY_Converter:
             print(f"File reading error: {e}")
             return None
 
-    def convert_masam2_file(self, file_path, output_subdir=None, start_date=None, end_date=None):
+    def convert_masam2_file(
+        self,
+        file_path,
+        output_subdir=None,
+        start_date=None,
+        end_date=None,
+    ):
         """
         Convert one MASAM2 file into daily .npy arrays.
 
@@ -358,7 +368,9 @@ if __name__ == "__main__":
             else:
                 current = current.replace(month=current.month + 1)
 
-    parser = argparse.ArgumentParser(description="Convert monthly MASAM2 NetCDF files to .npy.")
+    parser = argparse.ArgumentParser(
+        description="Convert monthly MASAM2 NetCDF files to .npy."
+    )
     parser.add_argument(
         "--start",
         required=True,
@@ -393,14 +405,20 @@ if __name__ == "__main__":
     for year, month in iter_months(start_date, end_date):
         filename = f"masam2.{year}{month}.nc"
         input_file = args.input_dir / year / filename
+        input_file_gz = args.input_dir / year / f"{filename}.gz"
 
-        if os.path.exists(input_file):
-            print(f"File found: {input_file}")
-            quick_convert(
-                input_file,
-                args.output_dir,
-                start_date=start_date,
-                end_date=end_date,
-            )
+        if input_file.exists():
+            source_file = input_file
+        elif input_file_gz.exists():
+            source_file = input_file_gz
         else:
-            print(f"File not found: {input_file}")
+            print(f"File not found: {input_file} or {input_file_gz}")
+            continue
+
+        print(f"File found: {source_file}")
+        quick_convert(
+            source_file,
+            args.output_dir,
+            start_date=start_date,
+            end_date=end_date,
+        )
